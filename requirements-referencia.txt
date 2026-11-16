@@ -1,0 +1,8 @@
+# AgroAnálise — dependências OPCIONAIS, só para refazer a referência climática ERA5-Land
+# (scripts/baixar_referencia_era5land.py). Usadas FORA do campo, com internet; o sistema no
+# sítio funciona 100 % offline com os arquivos já guardados em referencia_climatica/ e NÃO
+# precisa destes pacotes (o requirements.txt principal não muda).
+# Versões fixadas: as mesmas com que os arquivos de 2018–2021 foram extraídos (2026-11-14).
+omfiles==1.2.0
+fsspec==2026.9.0
+aiohttp==3.14.5

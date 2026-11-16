@@ -1,0 +1,1237 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Texto acompanha a fonte escolhida no celular (rem) e a página não deixa o navegador escurecê-la. -->
+<meta name="text-scale" content="scale">
+<meta name="color-scheme" content="only light">
+<meta name="theme-color" content="#1f4d2b">
+<title>AgroAnálise — Companheiro Virtual</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  /* CSS CRÍTICO: só o que dá forma à primeira tela (o resto vem de agricultor.css, com cache imutável).
+     Fundo claro e texto escuro, legível ao sol forte; textos em rem; o semáforo (gráfico) em px/vw/vh. */
+  :root {
+    --fundo: #f4f0e6; --fundo-2: #ebe4d3; --superficie: #fff; --texto: #15211a; --texto-suave: #34413a; --borda: #d6cdb8;
+    --marca: #1f4d2b; --marca-clara: #2f6b3a;
+    --verde: #1fa64f; --verde-texto: #0a4f24; --verde-fundo: #e3f4e8;
+    --amarelo: #ffc21a; --amarelo-texto: #5c3f00; --amarelo-fundo: #fff3cf;
+    --vermelho: #e5352b; --vermelho-texto: #8a0f16; --vermelho-fundo: #fde4e1;
+    /* Neutro: dado de teste ou demonstração vista fora da banca (cor que NÃO é da lavoura). */
+    --teste: #5b6b78; --teste-texto: #26323b; --teste-fundo: #e9eef2;
+    --estado: var(--amarelo); --estado-texto: var(--amarelo-texto); --estado-fundo: var(--amarelo-fundo);
+    /* Lâmpada de 80 a 104 px (a parte acesa, 91 % disso, nunca fica abaixo de 72 px). */
+    --lampada: clamp(80px, min(25vw, 12.5vh), 104px); --altura-barra: 92px;
+  }
+  body[data-estado="verde"] { --estado: var(--verde); --estado-texto: var(--verde-texto); --estado-fundo: var(--verde-fundo); }
+  body[data-estado="vermelho"] { --estado: var(--vermelho); --estado-texto: var(--vermelho-texto); --estado-fundo: var(--vermelho-fundo); }
+  body[data-estado="neutro"] { --estado: var(--teste); --estado-texto: var(--teste-texto); --estado-fundo: var(--teste-fundo); }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: system-ui, Roboto, Arial, sans-serif; color: var(--texto); overflow-wrap: break-word;
+    background: var(--fundo); padding-bottom: calc(var(--altura-barra) + 12px);
+  }
+  button { font: inherit; color: inherit; }
+  [hidden] { display: none !important; }
+  .icone { width: 1em; height: 1em; flex: none; fill: none; stroke: currentColor; stroke-width: 2.2; }
+
+  /* Topo: marca + plantação monitorada (quebra de linha com fonte grande, sem reticências). */
+  /* Folgas em vh: no celular baixo tudo encolhe um pouco para semáforo, ações, Feito e Técnico ficarem acima da barra. */
+  .topo, .principal { max-width: 1180px; margin: 0 auto; padding: min(8px, .6vh) 16px; }
+  .topo, .marca, .topo__direita, .cultura-atual { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+  .topo { justify-content: space-between; }
+  .marca__selo, .causa, .chip-estado__bola, .botao-ajuda { flex: none; }
+  .marca__selo { width: 36px; height: 36px; display: grid; place-items: center; }
+  /* Celular estreito: sem o selo decorativo, marca e plantação cabem numa linha só (≈ 44 px a mais para a 1ª tela). */
+  @media (max-width: 379px) { .marca__selo { display: none; } }
+  .marca__nome { font-size: 1.1rem; font-weight: 800; line-height: 1.1; }
+  .marca__sitio { color: var(--texto-suave); }
+  .topo__direita { margin-left: auto; }
+  .cultura-atual { gap: 4px; padding: 5px 10px 5px 6px; border: 2px solid var(--borda); font-weight: 800; }
+  .cultura-atual .icone { width: 24px; height: 24px; }
+  .selo-modo, .aviso-voz, .selo-relogio, .selo-som, .dica-voz { display: none; }
+
+  /* Ordem: semáforo → cartão → ações → retorno; explicação e números ficam abaixo da dobra. */
+  .principal, .area-estado { display: grid; grid-template-columns: minmax(0, 1fr); gap: min(10px, 1vh); min-width: 0; }
+  .principal { padding-top: 2px; }
+  .area-semaforo { display: flex; flex-direction: column; align-items: center; }
+
+  /* Semáforo deitado (vermelho → amarelo → verde) em todo celular em pé.
+     Borda tracejada clara + relógio = notícia antiga (forma, não só cor). */
+  .semaforo {
+    display: flex; gap: calc(var(--lampada) * .1); padding: calc(var(--lampada) * .1) calc(var(--lampada) * .14);
+    border-radius: calc(var(--lampada) * .3); background: #1a211e; border: 4px solid #090c0b;
+  }
+  .desatualizada .semaforo { border: 4px dashed #efe9d8; }
+  .soquete { position: relative; width: var(--lampada); height: var(--lampada); border-radius: 50%; padding: calc(var(--lampada) * .045); background: #0a0e0c; }
+  .lampada { width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center; overflow: hidden; background: radial-gradient(color-mix(in srgb, var(--cor) 18%, #111), #0b0b0b 80%); }
+  .lampada--vermelho { --cor: var(--vermelho); --clara: #ffc4bb; }
+  .lampada--amarelo { --cor: var(--amarelo); --clara: #fff6c4; }
+  .lampada--verde { --cor: var(--verde); --clara: #9af5b8; }
+  /* Acesa: núcleo claro grande + anel branco interno (forte mesmo com reflexo de sol na tela). */
+  .acesa .lampada {
+    background: radial-gradient(circle at 50% 42%, #fff 0 14%, var(--clara) 38%, var(--cor) 72%, color-mix(in srgb, var(--cor) 70%, #000));
+    box-shadow: inset 0 0 0 calc(var(--lampada) * .06) #fff;
+  }
+  .carregando .lampada, .desatualizada .lampada { filter: saturate(.35); }
+
+  /* Cartão do estado: causa (tocável, fala o motivo) + título; chip com o sinal por escrito. */
+  .cartao-estado { background: var(--superficie); border: 3px solid var(--estado); border-top-width: 10px; padding: min(8px, 1vh) 14px min(10px, 1.2vh); }
+  .cabeca, .chip-estado, .aviso-teste, .retorno button, .botao-voz { display: flex; align-items: center; gap: 10px; }
+  .causa { position: relative; width: 60px; height: 60px; padding: 0; display: grid; place-items: center; background: var(--estado-fundo); color: var(--estado-texto); border: 3px solid var(--estado); }
+  .titulo-estado { margin: 0; min-width: 0; font-size: clamp(1.55rem, 7vw, 3.1rem); line-height: 1.08; font-weight: 900; text-wrap: balance; }
+  .chip-estado { display: inline-flex; gap: 8px; margin-top: 8px; padding: 4px 12px 4px 5px; background: var(--estado-fundo); color: var(--estado-texto); font-weight: 800; text-transform: uppercase; border: 2px solid var(--estado); }
+  .chip-estado__bola { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--estado); }
+  .aviso-teste { gap: 8px; margin: 8px 0 0; padding: 6px 10px; border: 2px dashed; font-weight: 700; }
+  .aviso-teste .icone { width: 24px; height: 24px; }
+
+  /* Pictogramas de AÇÃO: o que fazer, sem precisar ler. Tracejado = vem da última notícia guardada. */
+  .acoes { display: flex; justify-content: center; gap: 12px; padding: min(8px, 1vh) 8px min(6px, .7vh); margin: 0; background: var(--superficie); border: 2px solid var(--borda); list-style: none; }
+  .acoes:empty { display: none; }
+  .acao { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; flex: 0 1 92px; }
+  .acao__quadro { position: relative; width: min(72px, 10vh); height: min(72px, 10vh); padding: 0; display: grid; place-items: center; background: var(--estado-fundo); color: var(--estado-texto); border: 3px solid var(--estado); }
+  .acao__quando { position: absolute; right: -10px; bottom: -8px; width: 34px; height: 34px; display: grid; place-items: center; border: 2px solid; }
+  .acao__legenda { font-weight: 800; line-height: 1.1; text-align: center; }
+
+  /* Retorno: "Feito" (com desfazer) e "Chamar o técnico". */
+  .retorno { display: flex; gap: 10px; }
+  .retorno button { flex: 1; min-width: 0; min-height: 56px; padding: 4px 8px; justify-content: center; gap: 8px; font-size: 1.2rem; font-weight: 800; background: var(--superficie); border: 3px solid var(--marca-clara); color: var(--marca); }
+  #feito { background: var(--marca); color: #fff; }
+
+  /* Barra de voz fixa no celular (fundo opaco); a altura real ajusta o fim da página e a rolagem do foco. */
+  .barra-voz { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: var(--fundo-2); border-top: 2px solid var(--borda); }
+  .linha-voz { display: flex; gap: 10px; max-width: 640px; margin: 0 auto; }
+  .botao-ajuda { width: 60px; min-height: 70px; font-size: 2.2rem; font-weight: 900; color: var(--marca); background: #fff; border: 3px solid var(--marca); }
+  .botao-voz { flex: 1; min-width: 0; min-height: 70px; padding: 6px 10px; justify-content: center; gap: 12px; font-size: clamp(1.25rem, 6vw, 1.55rem); font-weight: 900; color: #fff; background: #1a4724; border: 0; }
+  .botao-voz .icone { width: 36px; height: 36px; }
+  .botao-voz__textos { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
+
+</style>
+<!-- O resto do CSS não bloqueia a primeira pintura (rede 2G); fica guardado no celular por um ano. -->
+<link rel="stylesheet" href="{{ url_css_agricultor }}" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="{{ url_css_agricultor }}"></noscript>
+</head>
+<body data-estado="amarelo" data-confianca="viva" class="carregando">
+<script type="application/json" id="estado-inicial">{{ estado_inicial|tojson }}</script>
+
+<div class="faixa-troca" id="faixa-troca" role="status" hidden>
+  <svg class="icone" aria-hidden="true"><use href="#i-broto"/></svg>
+  <span id="faixa-troca-texto"></span>
+  <button type="button" class="botao-fechar" id="faixa-troca-fechar" aria-label="Fechar aviso"><svg class="icone" aria-hidden="true"><use href="#i-x"/></svg></button>
+</div>
+
+<header class="topo">
+  <div class="marca">
+    <div class="marca__selo" aria-hidden="true"><svg class="icone"><use href="#i-broto"/></svg></div>
+    <div>
+      <div class="marca__nome">AgroAnálise</div>
+      <div class="marca__sitio" id="nome-propriedade">Companheiro Virtual</div>
+    </div>
+  </div>
+  <div class="topo__direita">
+    <span class="cultura-atual" id="cultura-atual">
+      <svg class="icone" aria-hidden="true"><use id="cultura-atual-icone" href="#i-broto"/></svg><span id="cultura-atual-nome">…</span>
+    </span>
+    <span class="selo-modo" id="selo-modo">
+      <svg class="icone" aria-hidden="true"><use href="#i-palco"/></svg><span id="selo-modo-texto">…</span>
+    </span>
+  </div>
+</header>
+
+<main class="principal">
+  <section class="area-semaforo" aria-label="Semáforo da lavoura">
+    <div class="semaforo" id="semaforo" role="img" aria-label="Semáforo carregando">
+      <div class="soquete" data-cor="vermelho"><div class="lampada lampada--vermelho"><svg class="icone" aria-hidden="true"><use href="#i-x"/></svg></div><svg class="selo-relogio icone" aria-hidden="true"><use href="#i-relogio"/></svg></div>
+      <div class="soquete" data-cor="amarelo"><div class="lampada lampada--amarelo"><svg class="icone" aria-hidden="true"><use id="icone-meio" href="#i-exclamacao"/></svg></div><svg class="selo-relogio icone" aria-hidden="true"><use href="#i-relogio"/></svg></div>
+      <div class="soquete" data-cor="verde"><div class="lampada lampada--verde"><svg class="icone" aria-hidden="true"><use href="#i-check"/></svg></div><svg class="selo-relogio icone" aria-hidden="true"><use href="#i-relogio"/></svg></div>
+    </div>
+<script>
+  /* Primeira pintura: a cor do semáforo aparece antes do resto da página chegar (rede 2G).
+     Dado de teste ou demonstração ligada em outro aparelho: semáforo apagado (neutro). */
+  (function () {
+    try {
+      var e = JSON.parse(document.getElementById("estado-inicial").textContent || "null");
+      if (e && e.cor) {
+        var neutro = e.dados_simulados || (e.demonstracao_ativa && !e.aparelho_da_banca && !/[?&]banca=1/.test(location.search));
+        document.body.setAttribute("data-estado", neutro ? "neutro" : e.cor);
+        document.body.classList.remove("carregando");
+        if (!neutro) { document.querySelector('.soquete[data-cor="' + e.cor + '"]').classList.add("acesa"); }
+      }
+    } catch (erro) { /* a página continua e consulta a API */ }
+  })();
+</script>
+  </section>
+
+  <div class="area-estado">
+    <article class="cartao-estado">
+      <div class="cabeca">
+        <button type="button" class="causa" id="causa" aria-label="Motivo"><svg class="icone" aria-hidden="true"><use id="causa-icone" href="#i-broto"/></svg><svg class="icone selo-som" aria-hidden="true"><use href="#i-som"/></svg></button>
+        <h1 class="titulo-estado" id="titulo">Carregando…</h1>
+      </div>
+      <div class="chip-estado">
+        <span class="chip-estado__bola" aria-hidden="true"><svg class="icone"><use id="chip-icone" href="#i-exclamacao"/></svg></span>
+        <span id="chip-texto">Aguarde</span>
+      </div>
+      <p class="aviso-teste" id="aviso-teste" hidden><svg class="icone" aria-hidden="true"><use href="#i-atencao"/></svg><span id="aviso-teste-texto"></span></p>
+    </article>
+    <!-- Sem voz em português: aviso no fluxo (a barra de voz não cresce e não cobre os botões). -->
+    <div class="aviso-voz" id="aviso-voz" role="alert"><svg class="icone" aria-hidden="true"><use href="#i-sem-voz"/></svg><span>O celular não tem voz em português. Bipes: 1 verde, 2 amarelo, 3 vermelho.</span><button type="button" class="botao-fechar" id="aviso-voz-fechar" aria-label="Fechar aviso"><svg class="icone" aria-hidden="true"><use href="#i-x"/></svg></button></div>
+
+    <ul class="acoes" id="acoes" aria-label="O que fazer"></ul>
+    <div class="retorno">
+      <button type="button" id="feito" data-estado-feito="pronto" hidden><svg class="icone" aria-hidden="true"><use id="feito-icone" href="#i-check"/></svg><span id="feito-texto">Feito</span></button>
+      <button type="button" id="tecnico" aria-label="Chamar o técnico"><svg class="icone" aria-hidden="true"><use href="#i-telefone"/></svg>Técnico</button>
+    </div>
+
+    <article class="cartao-explicacao">
+      <p class="mensagem" id="mensagem">Ainda estou buscando as informações da sua lavoura.</p>
+      <div class="linha-info">
+        <span><svg class="icone" aria-hidden="true"><use href="#i-relogio"/></svg><span id="info-hora">—</span></span>
+        <span class="chip-corrigida" id="chip-corrigida" hidden><svg class="icone" aria-hidden="true"><use href="#i-chave"/></svg>Leitura corrigida</span>
+      </div>
+    </article>
+
+    <div class="barra-voz" id="barra-voz">
+      <div class="linha-voz">
+        <button type="button" class="botao-ajuda" id="ajuda" aria-label="Ajuda">?</button>
+        <button type="button" class="botao-voz" id="botao-voz" data-falando="false">
+          <svg class="icone" aria-hidden="true"><use href="#i-som"/></svg>
+          <span class="botao-voz__textos"><span id="botao-voz-texto">Ouvir orientação</span><small class="dica-voz">Aviso sozinho se mudar</small></span>
+        </button>
+      </div>
+    </div>
+
+    <details class="detalhes" id="detalhes">
+      <summary>Ver os números da medição<span class="seta" aria-hidden="true"></span></summary>
+      <dl class="grade-numeros">
+        <div class="numero"><dt>Temperatura</dt><dd id="num-temperatura">—</dd></div>
+        <div class="numero"><dt>Umidade do ar</dt><dd id="num-umidade-ar">—</dd></div>
+        <div class="numero"><dt>Água na terra</dt><dd id="num-umidade-solo">—</dd></div>
+      </dl>
+    </details>
+
+    <fieldset class="culturas" id="culturas" hidden>
+      <legend>Plantação:</legend><span id="culturas-botoes"></span>
+    </fieldset>
+
+    <!-- Banca: só demonstração. Florada e seca programada são do técnico (/tecnico). -->
+    <details class="area-banca" id="area-banca">
+      <summary id="rotulo-banca"><svg class="icone" aria-hidden="true"><use href="#i-palco"/></svg>Área da banca</summary>
+      <section class="painel-demo" aria-labelledby="rotulo-banca">
+        <p>Para apresentações: mostra como o sistema reage.</p>
+        <div class="faixa-demo"><svg class="icone" aria-hidden="true"><use href="#i-palco"/></svg><span id="faixa-demo-texto" aria-live="off"></span></div>
+        <div class="grade-cenarios" id="cenarios"></div>
+        <button type="button" class="botao-normal" id="botao-normal"><svg class="icone" aria-hidden="true"><use href="#i-check"/></svg>Voltar ao normal</button>
+        <a class="botao-normal" href="/tecnico">Página do técnico</a>
+      </section>
+    </details>
+  </div>
+  <p class="so-leitor" id="anunciador" role="status"></p>
+</main>
+
+<dialog class="dialogo" id="dialogo" aria-labelledby="dialogo-texto">
+  <div class="dialogo__caixa">
+    <div class="dialogo__icone" aria-hidden="true"><svg class="icone"><use id="dialogo-icone" href="#i-atencao"/></svg></div>
+    <p class="dialogo__texto" id="dialogo-texto"></p>
+    <input class="dialogo__pin" id="dialogo-pin" type="password" inputmode="numeric" autocomplete="off" aria-label="Senha da banca" hidden>
+    <p class="dialogo__erro" id="dialogo-erro" role="alert" hidden></p>
+    <div class="dialogo__botoes">
+      <button type="button" class="botao-sim" id="dialogo-sim"><svg class="icone" aria-hidden="true"><use href="#i-check"/></svg><span id="dialogo-sim-texto">Sim</span></button>
+      <button type="button" class="botao-nao" id="dialogo-nao"><svg class="icone" aria-hidden="true"><use href="#i-x"/></svg><span id="dialogo-nao-texto">Não</span></button>
+    </div>
+  </div>
+</dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- Ícones e pictogramas em SVG embutido (oculto: os símbolos valem para os <use>): funcionam sem internet e sem fontes de emoji.
+     Pictogramas de ação: traço 2,2 em grade de 24; cada par difere em 40 % ou mais dos pixels com tinta a 24 px. -->
+<svg hidden>
+  <symbol id="i-som" viewBox="0 0 24 24"><path d="M3.5 9.5v5h3.8l5.2 4.3V5.2L7.3 9.5H3.5Z"/><path class="onda" d="M15.8 9.2a4 4 0 0 1 0 5.6M18.6 6.4a8 8 0 0 1 0 11.2"/></symbol>
+  <symbol id="i-sem-voz" viewBox="0 0 24 24"><path d="M3.5 9.5v5h3.8l5.2 4.3V5.2L7.3 9.5H3.5ZM16 9.5l5 5M21 9.5l-5 5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4.5 12.8 9.6 17.6 19.5 6.8"/></symbol>
+  <symbol id="i-exclamacao" viewBox="0 0 24 24"><path d="M12 4.5v10M12 19.3v.2"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-desfazer" viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3M4.5 3.5v4.2h4.2"/></symbol>
+  <!-- Cultivares: o grão com a letra (A = Arábica, C = Conilon). -->
+  <symbol id="i-cafe-arabica" viewBox="0 0 24 24"><path d="M12 2.5c4.4 0 7.5 4.2 7.5 9.5s-3.1 9.5-7.5 9.5-7.5-4.2-7.5-9.5 3.1-9.5 7.5-9.5ZM9.3 16.5 12 7.5l2.7 9M10.2 13.6h3.6"/></symbol>
+  <symbol id="i-cafe-conilon" viewBox="0 0 24 24"><path d="M12 2.5c4.4 0 7.5 4.2 7.5 9.5s-3.1 9.5-7.5 9.5-7.5-4.2-7.5-9.5 3.1-9.5 7.5-9.5ZM14.8 9a3.6 3.6 0 1 0 0 6"/></symbol>
+  <symbol id="i-broto" viewBox="0 0 24 24"><path d="M12 21v-9M12 12C12 7.5 8.5 5 4 5c0 4.5 3.5 7 8 7ZM12 14c0-4 3-6.5 8-6.5 0 4-3 6.5-8 6.5ZM6 21h12"/></symbol>
+  <symbol id="i-palco" viewBox="0 0 24 24"><rect x="3" y="3.5" width="18" height="12" rx="1.5"/><path d="M12 15.5v3.5M7.5 21l4.5-2 4.5 2M8 11.5l3-3 2 2 3.5-3.5"/></symbol>
+  <symbol id="i-chave" viewBox="0 0 24 24"><path d="M14.6 5.6a4.2 4.2 0 0 0-5.5 5.5L3.5 16.7l3.8 3.8 5.6-5.6a4.2 4.2 0 0 0 5.5-5.5l-2.7 2.7-2.6-.6-.6-2.6 2.7-2.7Z"/></symbol>
+  <symbol id="i-relogio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-atencao" viewBox="0 0 24 24"><path d="M10.3 3.9 2.6 17.5A2 2 0 0 0 4.3 20.5h15.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0ZM12 9v4.5M12 17v.2"/></symbol>
+  <!-- Pictogramas de ação e selos de "quando". -->
+  <symbol id="i-regador" viewBox="0 0 24 24"><path d="M4.5 10.5h8.5v7.8a1.7 1.7 0 0 1-1.7 1.7H6.2a1.7 1.7 0 0 1-1.7-1.7v-7.8ZM6.5 10.5V9a2.3 2.3 0 0 1 4.5 0v1.5M13 12.5l5-4.5M17 6.8l2.6 2.6M20.3 12.6v.4M18.6 14.6v.4M21.6 15.6v.4M4.5 13H3.4a1.6 1.6 0 0 1 0-3.2h1.1"/></symbol>
+  <symbol id="i-sem-rega" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M5.3 5.3l13.4 13.4M8 11.5h5.5v4.3a1.2 1.2 0 0 1-1.2 1.2H9.2A1.2 1.2 0 0 1 8 15.8v-4.3ZM13.5 12.5l2.6-2.4"/></symbol>
+  <symbol id="i-valeta" viewBox="0 0 24 24"><path d="M2 10h6l2 6h4l2-6h6v10H2ZM11 13.2h2M12 3.5h8M17.5 1.5l2.5 2-2.5 2"/></symbol>
+  <symbol id="i-guarda-sol" viewBox="0 0 24 24"><path d="M3 11.5a9 9 0 0 1 18 0ZM12 11.5v7.3a1.7 1.7 0 0 1-3.4 0M12 2.5v-.5M8.5 11.5a12 12 0 0 1 3.5-9 12 12 0 0 1 3.5 9"/></symbol>
+  <symbol id="i-manta" viewBox="0 0 24 24"><path d="M2 20h20M3.5 20 12 5.5 20.5 20M12 20v-4.5M12 15.5c0-1.8-1.3-2.8-3-2.8 0 1.8 1.3 2.8 3 2.8ZM12 16.7c0-1.4 1-2.3 2.6-2.3 0 1.4-1 2.3-2.6 2.3Z"/></symbol>
+  <symbol id="i-enxada" viewBox="0 0 24 24"><path d="M3 20.5c1.7-3.6 9.3-3.6 11 0ZM8.5 18v-4M8.5 14c0-1.6-1.2-2.5-2.8-2.5 0 1.6 1.2 2.5 2.8 2.5ZM8.5 15.2c0-1.3 1-2.1 2.4-2.1 0 1.3-1 2.1-2.4 2.1ZM21 3l-6.3 9.3M13 10.2l3.7 2.6-1.6 2.3-3.4-1.4Z"/></symbol>
+  <symbol id="i-aparelho" viewBox="0 0 24 24"><rect x="4.5" y="6.5" width="15" height="10" rx="2"/><path d="M8 10h8v3H8ZM9 16.5v5M15 16.5v5M16.5 6.5V3"/></symbol>
+  <!-- Manhã: céu claro, sol alto com raios. Tardinha: céu escuro e meio sol grande na linha do chão. -->
+  <symbol id="i-sol-nascendo" viewBox="0 0 24 24"><circle cx="12" cy="11" r="4"/><path d="M2.5 20h19M12 2.5v2M4.5 6l1.6 1.4M19.5 6l-1.6 1.4M2.5 12.5h2.3M19.2 12.5h2.3"/></symbol>
+  <symbol id="i-sol-poente" viewBox="0 0 24 24"><rect x=".5" y="6" width="23" height="11" rx="2" fill="currentColor"/><path d="M7 17a5 5 0 0 1 10 0Z" fill="#fff" stroke="#fff"/><path d="M1 21h22"/></symbol>
+  <!-- Agora: relógio cheio com o ponteiro no 12. -->
+  <symbol id="i-agora" viewBox="0 0 24 24"><circle cx="12" cy="13" r="7.5" fill="currentColor"/><path d="M12 13V8.5" stroke="#fff" stroke-width="2.4"/><path d="M10 2.5h4M12 2.5v3"/></symbol>
+  <!-- Causas. -->
+  <symbol id="i-sol" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M5 5l1.8 1.8M17.2 17.2 19 19M5 19l1.8-1.8M17.2 6.8 19 5"/></symbol>
+  <symbol id="i-floco" viewBox="0 0 24 24"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7M9 3.5l3 2.5 3-2.5M9 20.5l3-2.5 3 2.5"/></symbol>
+  <symbol id="i-seca" viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="2.5"/><path d="M2 10.5h20M2 21.5h20M5.5 10.5l1.5 3.5-2 3 1 4.5M12 10.5l-1.5 4 2.5 2.5-1 4.5M18.5 10.5l-1 4 2 3.5M7 14l4.5.5M13 17l4.5-2.5"/></symbol>
+  <symbol id="i-encharcado" viewBox="0 0 24 24"><path d="M2 15c2-1.5 4-1.5 6 0s4 1.5 6 0 4-1.5 6 0M2 19.5c2-1.5 4-1.5 6 0s4 1.5 6 0 4-1.5 6 0M12 2.5s4 4.3 4 7a4 4 0 0 1-8 0c0-2.7 4-7 4-7Z"/></symbol>
+  <symbol id="i-telefone" viewBox="0 0 24 24"><path d="M5 3.5h3.5l1.8 4.6-2.3 1.4a11 11 0 0 0 6.5 6.5l1.4-2.3 4.6 1.8V19a2 2 0 0 1-2 2A16.5 16.5 0 0 1 3 5.5a2 2 0 0 1 2-2Z"/></symbol>
+</svg>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ------------------------- Configuração ------------------------- */
+  var INTERVALO_ATUALIZACAO_MS = 5000;
+  var INTERVALO_MAXIMO_MS = 60000;
+  var TEMPO_LIMITE_REDE_MS = 8000;
+  var ESPERA_INICIO_FALA_MS = 1500;
+  var TOQUE_LONGO_MS = 2000;
+  var JANELA_AVISO_TROCA_S = 600;
+  // Voz: 2º toque até 2 min depois da fala dá a explicação completa; repetir de novo fala devagar.
+  var JANELA_MAIS_DETALHE_MS = 120000;
+  var RITMO_NORMAL = 0.95;
+  var RITMO_LENTO = 0.85;
+  var RITMO_REPETICAO = 0.8;
+  // "Feito": 15 s para desfazer na tela; toques nos primeiros 0,8 s não desfazem (toque duplo sem querer).
+  var TEMPO_DESFAZER_MS = 15000;
+  var TRAVA_DESFAZER_MS = 800;
+  var CHAVE_VOZ = "agro_voz_automatica";
+  var CHAVE_VOZ_LENTA = "agro_voz_lenta";
+  var CHAVE_ULTIMO = "agro_ultimo_status";
+  var CHAVE_TROCA = "agro_troca_conhecida";
+  var CHAVE_PIN = "agro_pin_banca";
+  var CHAVE_FEITOS = "agro_feitos";
+  // Cor, nome da luz (concordância: "luz amarela"), palavra do chip e ícone de cada nível.
+  var ESTADOS = {
+    0: { cor: "verde", luz: "verde", palavra: "Tudo bem", icone: "#i-check" },
+    1: { cor: "amarelo", luz: "amarela", palavra: "Atenção", icone: "#i-exclamacao" },
+    2: { cor: "vermelho", luz: "vermelha", palavra: "Perigo", icone: "#i-x" }
+  };
+  // Bipes por cor (sem arquivos de som): verde 1 longo grave, amarelo 2 médios, vermelho 3 agudos rápidos.
+  var BIPES = { 0: [1, 330, 0.8, 0.2], 1: [2, 660, 0.32, 0.18], 2: [3, 1046, 0.14, 0.09] };
+  // Um símbolo por cultivar (Arábica ≠ Conilon); outras culturas usam o broto.
+  var ICONES_CULTURA = { cafe_arabica: "#i-cafe-arabica", cafe_conilon: "#i-cafe-conilon" };
+  // Pictograma e selo de "quando" de cada ação (cada par é único); legenda e descrição vêm do servidor.
+  var ACOES = {
+    REGAR_AGORA: ["regador", "agora"], REGAR_FIM_DA_TARDE: ["regador", "sol-poente"], REGAR_MANHA: ["regador", "sol-nascendo"],
+    NAO_REGAR: ["sem-rega"], ABRIR_VALETAS: ["valeta"], FAZER_SOMBRA: ["guarda-sol"], COBRIR_MUDAS: ["manta"],
+    CHEGAR_TERRA: ["enxada"], NADA_A_FAZER: ["broto", "check"], VERIFICAR_APARELHO: ["aparelho"]
+  };
+  // Desenho da CAUSA ao lado do título; a frase falada ao toque vem do servidor (causa_descricao).
+  var CAUSAS = { TERRA_SECA: "seca", ENCHARCADO: "encharcado", FRIO_GEADA: "floco", CALOR: "sol", APARELHO: "aparelho" };
+  var ACAO_APARELHO = { codigo: "VERIFICAR_APARELHO", legenda: "Aparelho", descricao: "Confira o aparelho" };
+  // Por confiança: [texto do chip, final do rótulo do semáforo, aviso]. As três primeiras são "última notícia".
+  var CONFIANCAS = {
+    antiga: ["Sem medição recente", ". Notícia antiga, não siga esta cor", "Medição antiga: não siga esta cor"],
+    "sem-ligacao": ["Sem ligação", ". Sem ligação"],
+    "erro-servidor": ["Programa com problema", ". Programa com problema"],
+    "sem-leitura": ["Sem dados do sensor"],
+    teste: ["Teste · sensor desligado", "", "Dados de teste: não são da sua lavoura"],
+    demonstracao: ["Demonstração", "", "Demonstração da banca: não é a sua lavoura"]
+  };
+  var MENSAGEM_DEMO = "É uma apresentação da banca. Estas cores não são da sua lavoura.";
+
+  /* --------------------------- Estado ----------------------------- */
+  var estadoAtual = null;
+  var confiancaAtual = "viva";
+  var neutroAtual = false;
+  var chaveAnunciada = "";
+  var chaveAnunciador = "";
+  var vozAutomatica = false;
+  var semVozPt = false;
+  var semLigacao = false;
+  var falhasSeguidas = 0;
+  var intervaloAtualMs = INTERVALO_ATUALIZACAO_MS;
+  var segundosDemo = 0;
+  var fimDemoEm = 0;
+  var temporizadorStatus = null;
+  var temporizadorToast = null;
+  var temporizadorInicioFala = null;
+  var temporizadorFeito = null;
+  var vozEscolhida = null;
+  var contextoAudio = null;
+  var ultimoAnuncioEm = 0;
+  var trocaExibidaEm = 0;
+  var cenariosCarregados = false;
+  var etapaVoz = 0;
+  var repeticoesVoz = 0;
+  var fimFalaEm = 0;
+  var falando = false;
+  var feitoMarcado = null;
+  var parametros = new URLSearchParams(window.location.search);
+  var modoBanca = parametros.get("banca") === "1";
+  var suportaVoz = "speechSynthesis" in window && typeof window.SpeechSynthesisUtterance === "function";
+
+  function $(id) { return document.getElementById(id); }
+
+  // Só escreve quando o texto muda: nada de mexer no DOM (e nos leitores de tela) a cada consulta.
+  function definirTexto(id, valor) {
+    var elemento = $(id);
+    var texto = String(valor === null || valor === undefined ? "" : valor);
+    if (elemento.textContent !== texto) { elemento.textContent = texto; }
+  }
+
+
+  /* --------------- Armazenamento local (pode falhar) --------------- */
+  function lerLocal(chave, sessao) {
+    try { return (sessao ? window.sessionStorage : window.localStorage).getItem(chave); } catch (erro) { return null; }
+  }
+  function gravarLocal(chave, valor, sessao) {
+    try {
+      var area = sessao ? window.sessionStorage : window.localStorage;
+      if (valor === null) { area.removeItem(chave); } else { area.setItem(chave, valor); }
+    } catch (erro) { /* navegador sem armazenamento: segue sem lembrar */ }
+  }
+
+  /* ---------------------------- Rede ------------------------------ */
+  function pedirJson(url, opcoes) {
+    var controlador = new AbortController();
+    var limite = setTimeout(function () { controlador.abort(); }, TEMPO_LIMITE_REDE_MS);
+    var config = Object.assign({ headers: { "Accept": "application/json" }, cache: "no-store", signal: controlador.signal }, opcoes || {});
+    return fetch(url, config).then(function (resposta) {
+      return resposta.json().catch(function () { return {}; }).then(function (dados) {
+        if (!resposta.ok) {
+          var erro = new Error(dados && dados.erro ? dados.erro : "Não foi possível completar o pedido.");
+          erro.respostaServidor = true;
+          erro.status = resposta.status;
+          erro.segundos = dados && dados.segundos_restantes;
+          throw erro;
+        }
+        return dados;
+      });
+    }).finally(function () { clearTimeout(limite); });
+  }
+
+  function enviarJson(url, corpo) {
+    var cabecalhos = { "Content-Type": "application/json", "Accept": "application/json" };
+    var pin = lerLocal(CHAVE_PIN, true);
+    if (pin) { cabecalhos["X-PIN-Banca"] = pin; }
+    return pedirJson(url, { method: "POST", headers: cabecalhos, body: JSON.stringify(corpo || {}) });
+  }
+
+  // Ações que mudam o que todos veem: com PIN no servidor, pede a senha; senha errada fica no diálogo.
+  function enviarProtegido(url, corpo) {
+    return enviarJson(url, corpo).catch(function (erro) {
+      if (erro.status !== 403 && erro.status !== 429) { throw erro; }
+      gravarLocal(CHAVE_PIN, null, true);
+      var resultado = null;
+      return abrirDialogo({
+        icone: "#i-chave", texto: "Digite a senha da banca", pin: true, erro: erro.status === 429 ? erro : null,
+        aoConfirmar: function (pin) {
+          gravarLocal(CHAVE_PIN, pin, true);
+          return enviarJson(url, corpo).then(function (dados) { resultado = dados; });
+        }
+      }).then(function (resposta) {
+        if (!resposta.ok) { var cancelado = new Error("cancelado"); cancelado.cancelado = true; throw cancelado; }
+        return resultado;
+      });
+    });
+  }
+
+  // Todo aviso aparece E é falado (resposta a um toque); só a contagem interna da banca é calada.
+  function mostrarAviso(texto, falar) {
+    var toast = $("toast");
+    toast.textContent = texto;
+    toast.classList.add("visivel");
+    clearTimeout(temporizadorToast);
+    temporizadorToast = setTimeout(function () { toast.classList.remove("visivel"); }, 3500);
+    if (falar !== false) { anunciar(texto, { semBipes: true }); }
+  }
+
+  function avisarErro(erro) {
+    if (erro && erro.cancelado) { return; }
+    mostrarAviso(erro && erro.respostaServidor ? erro.message : "Sem ligação com o sistema.");
+  }
+
+  /* ------------------------- Formatação --------------------------- */
+  function interpretarDataHora(texto) {
+    if (!texto) { return null; }
+    if (/(Z|[+-]\d{2}:?\d{2})$/.test(String(texto))) { var comFuso = new Date(texto); return isNaN(comFuso) ? null : comFuso; }
+    var partes = String(texto).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+    if (!partes) { return null; }
+    return new Date(+partes[1], +partes[2] - 1, +partes[3], +partes[4], +partes[5], +(partes[6] || 0));
+  }
+
+  function horaMinuto(data) { return String(data.getHours()).padStart(2, "0") + ":" + String(data.getMinutes()).padStart(2, "0"); }
+
+  // "hoje às 14:05", "ontem às 14:05" ou "em 03/07 às 14:05".
+  function descreverDia(data) {
+    var dias = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(data).setHours(0, 0, 0, 0)) / 864e5);
+    return (dias === 0 ? "hoje" : dias === 1 ? "ontem" : "em " + data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })) + " às " + horaMinuto(data);
+  }
+
+  function preencherNumero(id, valor, unidade, casas) {
+    var vazio = valor === null || valor === undefined || isNaN(valor);
+    definirTexto(id, vazio ? "—" : Number(valor).toLocaleString("pt-BR", { maximumFractionDigits: casas }) + " " + unidade);
+  }
+
+  // Ícone SVG decorativo (texto HTML) a partir do símbolo do sprite.
+  function icone(href) { return '<svg class="icone" aria-hidden="true"><use href="' + href + '"/></svg>'; }
+
+  function criarBotao(classe, codigo, pressionado, href, texto, aoTocar) {
+    var botao = document.createElement("button");
+    botao.type = "button";
+    botao.className = classe;
+    botao.setAttribute("data-codigo", codigo);
+    botao.setAttribute("aria-pressed", pressionado ? "true" : "false");
+    botao.innerHTML = icone(href);
+    botao.appendChild(document.createTextNode(texto));
+    botao.onclick = aoTocar;
+    return botao;
+  }
+
+  /* ------------------- Pictogramas de ação ------------------------ */
+  function desenharAcoes(lista) {
+    var faixa = $("acoes");
+    var chave = (lista || []).map(function (acao) { return acao.codigo + (acao.antiga ? "~" : ""); }).join(",");
+    if (faixa.getAttribute("data-chave") === chave) { return; }
+    faixa.setAttribute("data-chave", chave);
+    faixa.textContent = "";
+    (lista || []).forEach(function (acao) {
+      var desenho = ACOES[acao.codigo];
+      if (!desenho) { return; }
+      var item = document.createElement("li");
+      item.className = "acao";
+      item.setAttribute("data-acao", acao.codigo);
+      // Ação que vem da cópia guardada no celular (sem ligação): quadro tracejado, nunca apagado.
+      if (acao.antiga) { item.setAttribute("data-antiga", "true"); }
+      // Cada pictograma é um botão: o toque fala o que fazer (voz → bipes, como o botão grande).
+      item.innerHTML = '<button type="button" class="acao__quadro">' + icone("#i-" + desenho[0])
+        + (desenho[1] ? '<span class="acao__quando">' + icone("#i-" + desenho[1]) + "</span>" : "")
+        + '</button><span class="acao__legenda" aria-hidden="true"></span>';
+      item.firstChild.setAttribute("aria-label", acao.descricao);
+      item.firstChild.onclick = function () { falarToque(acao.descricao, acao.codigo); };
+      item.lastChild.textContent = acao.legenda;
+      faixa.appendChild(item);
+    });
+  }
+
+  /* --------------------------- Status ----------------------------- */
+  // Demonstração ligada por OUTRO aparelho e vista fora da banca: não é a lavoura (estado neutro).
+  function demoDeFora(dados) {
+    return !!(dados.demonstracao_ativa && Number(dados.segundos_restantes_demonstracao) > 0
+      && !dados.aparelho_da_banca && !modoBanca && !$("area-banca").open);
+  }
+
+  // Quanto dá para confiar na cor mostrada (atributo data-confianca do body).
+  function confiancaDe(dados) {
+    if (dados.erro_servidor) { return "erro-servidor"; }
+    if (dados.aviso_sem_ligacao) { return "sem-ligacao"; }
+    if (!dados.tem_leitura) { return "sem-leitura"; }
+    if (dados.dados_simulados) { return "teste"; }
+    if (demoDeFora(dados)) { return "demonstracao"; }
+    if (dados.leitura_desatualizada || dados.relogio_inconsistente) { return "antiga"; }
+    return "viva";
+  }
+
+  function aplicarStatus(dados) {
+    var nivel = ESTADOS.hasOwnProperty(dados.status_alerta) ? dados.status_alerta : 1;
+    var info = ESTADOS[nivel];
+    var corpo = document.body;
+    var confianca = confiancaDe(dados);
+    var demo = confianca === "demonstracao" || (!!dados.aviso_sem_ligacao && demoDeFora(dados));
+    var neutro = !!dados.dados_simulados || demo;
+    var esmaecido = !neutro && !!dados.leitura_desatualizada;
+    estadoAtual = dados;
+    confiancaAtual = confianca;
+    neutroAtual = neutro;
+    corpo.classList.remove("carregando");
+    corpo.setAttribute("data-estado", neutro ? "neutro" : info.cor);
+    corpo.setAttribute("data-confianca", confianca);
+    $("chip-corrigida").hidden = Number(dados.flag_anomalia) !== 1;
+    corpo.classList.toggle("desatualizada", esmaecido);
+    var soquetes = document.querySelectorAll(".soquete");
+    for (var i = 0; i < soquetes.length; i++) { soquetes[i].classList.toggle("acesa", !neutro && soquetes[i].getAttribute("data-cor") === info.cor); }
+    $("icone-meio").setAttribute("href", neutro ? "#i-aparelho" : "#i-exclamacao");
+
+    // Rótulo do semáforo com a concordância certa e a marca de notícia antiga, sem ligação ou teste.
+    // Espaços fixos: o chip só quebra entre "Sinal vermelho" e "Perigo".
+    var textos = CONFIANCAS[demo ? "demonstracao" : dados.dados_simulados ? "teste" : confianca] || ["Sinal " + info.cor + " · " + info.palavra];
+    $("semaforo").setAttribute("aria-label", neutro ? "Semáforo apagado: " + (demo ? "demonstração" : "dados de teste")
+      : "Semáforo: luz " + info.luz + " acesa" + (textos[1] || ""));
+    var aviso = dados.aviso_sem_ligacao || (dados.relogio_inconsistente ? "Relógio errado: não siga esta cor" : textos[2] || "");
+    definirTexto("aviso-teste-texto", aviso);
+    $("aviso-teste").hidden = !aviso;
+    $("chip-icone").setAttribute("href", neutro ? "#i-aparelho" : textos[1] ? "#i-relogio" : info.icone);
+    definirTexto("chip-texto", textos[0]);
+    definirTexto("titulo", demo ? "Demonstração da banca" : dados.titulo);
+    definirTexto("mensagem", demo ? MENSAGEM_DEMO : dados.mensagem_voz);
+    var data = interpretarDataHora(dados.data_hora);
+    definirTexto("info-hora", data ? "Medido " + descreverDia(data) : "Sem medição ainda");
+    if (dados.nome_propriedade) { definirTexto("nome-propriedade", dados.nome_propriedade); }
+    definirTexto("cultura-atual-nome", dados.nome_cultura || "—");
+    $("cultura-atual-icone").setAttribute("href", ICONES_CULTURA[dados.codigo_cultura] || "#i-broto");
+    var acoes = demo ? [] : (dados.acoes_detalhe || []);
+    desenharAcoes(acoes);
+    // Causa ao lado do título; "Feito" só com alerta de verdade que pede ação.
+    $("causa-icone").setAttribute("href", demo ? "#i-palco" : "#i-" + (CAUSAS[dados.causa] || "broto"));
+    $("causa").setAttribute("aria-label", "Motivo: " + (demo ? "demonstração" : dados.legenda_causa || "Normal") + ". Toque para ouvir");
+    // Integração v4: só com notícia VIVA (nunca teste, demonstração, antiga, sem ligação ou erro do programa).
+    $("feito").hidden = !(dados.tem_leitura && nivel > 0 && CAUSAS[dados.causa] && acoes.length && confianca == "viva");
+    atualizarFeito(dados);
+
+    definirTexto("selo-modo-texto", dados.rotulo_modo || dados.modo_operacao || "—");
+
+    preencherNumero("num-temperatura", dados.temperatura_ar, "°C", 1);
+    preencherNumero("num-umidade-ar", dados.umidade_ar, "%", 0);
+    preencherNumero("num-umidade-solo", dados.umidade_solo, "%", 0);
+
+    segundosDemo = Number(dados.segundos_restantes_demonstracao) || 0;
+    if (segundosDemo > 0 && Math.abs(Date.now() + segundosDemo * 1000 - fimDemoEm) > 60000) { fimDemoEm = Date.now() + segundosDemo * 1000; }
+    atualizarFaixaDemo();
+    marcarCenarioAtivo(dados.demonstracao_ativa ? dados.cenario_demonstracao : "");
+    marcarCulturaAtiva(dados.codigo_cultura);
+    verificarTrocaCultura(dados);
+
+    // Região viva única (#anunciador): só recebe texto quando a SITUAÇÃO muda.
+    var chave = chaveAnuncio(dados);
+    if (chaveAnunciador && chave !== chaveAnunciador) {
+      definirTexto("anunciador", $("titulo").textContent + ". " + $("chip-texto").textContent + ".");
+    }
+    chaveAnunciador = chave;
+    // Depois do primeiro toque no botão de voz, fala sozinho quando a SITUAÇÃO mudar
+    // (cor, plantação, cenário, entrada/saída da simulação ou da leitura antiga) — nunca no neutro.
+    // Os números da mensagem NÃO entram na chave: variar 1 grau não repete a fala.
+    if (vozAutomatica && chaveAnunciada && chave !== chaveAnunciada && !neutro) { anunciar(falaCurta()); }
+    if (!chaveAnunciada || neutro) { chaveAnunciada = chave; }
+  }
+
+  function chaveAnuncio(dados) {
+    var cultura = dados.codigo_cultura || "";
+    if (!dados.tem_leitura) { return "sem-leitura|" + cultura; }
+    if (dados.leitura_desatualizada) { return "antiga|" + cultura; }
+    // Na simulação as cores são de teste: só a entrada nela é anunciada.
+    if (dados.dados_simulados) { return "simulacao|" + cultura; }
+    return dados.status_alerta + "|" + cultura + "|" + (dados.demonstracao_ativa ? (dados.cenario_demonstracao || "") : "") + (demoDeFora(dados) ? "|fora" : "");
+  }
+
+  function guardarUltimoStatus(dados) {
+    gravarLocal(CHAVE_ULTIMO, JSON.stringify({ recebido_em: Date.now(), dados: dados }));
+  }
+
+  function lerUltimoStatus() {
+    try {
+      var salvo = JSON.parse(lerLocal(CHAVE_ULTIMO) || "null");
+      return salvo && salvo.dados && salvo.recebido_em ? salvo : null;
+    } catch (erro) { return null; }
+  }
+
+  // Sem ligação (rede) ou programa com problema (erro do servidor): mostra a ÚLTIMA notícia
+  // guardada, sempre marcada como antiga pela forma (borda tracejada, relógio, ações tracejadas).
+  function mostrarUltimaNoticia(problema) {
+    var servidor = problema === "erro-servidor";
+    var salvo = lerUltimoStatus();
+    var antigo = salvo ? salvo.dados : { tem_leitura: false, status_alerta: 1, acoes_detalhe: [] };
+    var quando = salvo ? "Última notícia de " + descreverDia(new Date(salvo.recebido_em)) : "";
+    semLigacao = true;
+    aplicarStatus(Object.assign({}, antigo, {
+      leitura_desatualizada: true, erro_servidor: servidor,
+      titulo: servidor ? "Programa com problema" : "Sem ligação agora",
+      aviso_sem_ligacao: servidor ? "O programa do computador está com problema." + (quando ? " " + quando : "")
+        : (quando ? quando + " — sem ligação agora" : "Sem ligação agora"),
+      mensagem_voz: servidor ? "O computador respondeu, mas o programa está com problema. Chame o técnico."
+        : "Sem ligação com o aparelho. Chegue mais perto do computador ou espere a ligação voltar."
+          + (salvo ? " A última notícia era: " + (antigo.titulo || "") + ". " + (antigo.mensagem_voz || "") : ""),
+      fala_curta: servidor ? "Atenção. Programa com problema: chame o técnico."
+        : "Atenção. Sem ligação: a cor é a última notícia.",
+      acoes_detalhe: servidor ? [ACAO_APARELHO] : (antigo.acoes_detalhe || []).map(function (acao) { return Object.assign({}, acao, { antiga: true }); }),
+      causa: servidor ? "APARELHO" : antigo.causa
+    }));
+  }
+
+  function agendarConsulta(espera) {
+    clearTimeout(temporizadorStatus);
+    temporizadorStatus = null;
+    if (document.visibilityState === "hidden") { return; }
+    temporizadorStatus = setTimeout(atualizarStatus, espera);
+  }
+
+  // Consulta econômica: 5 s com a página visível, nada com ela oculta e recuo até 60 s sem rede.
+  function atualizarStatus() {
+    clearTimeout(temporizadorStatus);
+    temporizadorStatus = null;
+    if (document.visibilityState === "hidden") { return Promise.resolve(); }
+    return pedirJson("/api/status").then(function (dados) {
+      if (falhasSeguidas > 1) { registrarEvento("rede_caida", String(falhasSeguidas)); }
+      falhasSeguidas = 0;
+      intervaloAtualMs = INTERVALO_ATUALIZACAO_MS;
+      reenviarFeitos();
+      semLigacao = false;
+      guardarUltimoStatus(dados);
+      aplicarStatus(dados);
+    }).catch(function (erro) {
+      falhasSeguidas += 1;
+      intervaloAtualMs = Math.min(INTERVALO_MAXIMO_MS, INTERVALO_ATUALIZACAO_MS * Math.pow(2, falhasSeguidas));
+      // O computador respondeu com erro: não é "sem ligação" (chegar perto não resolve).
+      // Sem nada na tela (1ª carga sem estado embutido), a 1ª falha já basta.
+      if (erro && erro.respostaServidor) { if (falhasSeguidas >= 2 || !estadoAtual) { mostrarUltimaNoticia("erro-servidor"); } }
+      else if (falhasSeguidas >= 2 || !estadoAtual || navigator.onLine === false) { mostrarUltimaNoticia("sem-ligacao"); }
+    }).finally(function () { agendarConsulta(intervaloAtualMs); });
+  }
+
+  /* ---------------------------- Voz ------------------------------- */
+  function escolherVoz() {
+    if (!suportaVoz) { return null; }
+    var vozes = window.speechSynthesis.getVoices() || [];
+    // Só serve voz cujo idioma comece com "pt" (de preferência pt-BR): voz em inglês lendo português ninguém entende.
+    vozEscolhida = vozes.filter(function (v) { return /^pt[-_]br/i.test(v.lang); })[0]
+      || vozes.filter(function (v) { return /^pt/i.test(v.lang); })[0] || null;
+    return vozEscolhida;
+  }
+
+  function ativarModoSemVoz() {
+    if (!semVozPt) { registrarEvento("sem_voz", ""); }
+    semVozPt = true;
+    // O aviso entra no fluxo: o controle tocado por último fica parado sob o dedo (a página rola junto).
+    var alvo = document.activeElement;
+    var antes = alvo.getBoundingClientRect().top;
+    document.body.classList.add("sem-voz");
+    window.scrollBy(0, alvo.getBoundingClientRect().top - antes);
+    definirTexto("botao-voz-texto", "Ouvir o sinal");
+  }
+
+  // 1º toque: o sinal e o que fazer, em até 15 palavras (fala_curta do servidor).
+  function falaCurta() {
+    if (!estadoAtual) { return "Ainda estou buscando as informações da sua lavoura."; }
+    if (confiancaAtual === "demonstracao") { return "Atenção. Demonstração da banca. Não é a sua lavoura."; }
+    var texto = String(estadoAtual.fala_curta || "") || textoLongo();
+    if ((neutroAtual || confiancaAtual !== "viva") && !/^Atenção/.test(texto)) { texto = "Atenção. " + texto; }
+    return texto;
+  }
+
+  // 2º toque ("para saber mais"): a orientação completa.
+  function textoLongo() {
+    if (!estadoAtual) { return "Ainda estou buscando as informações da sua lavoura."; }
+    var mensagem = String(estadoAtual.mensagem_voz || "");
+    if (confiancaAtual === "demonstracao") { return "Atenção. Demonstração. " + MENSAGEM_DEMO; }
+    if (estadoAtual.aviso_sem_ligacao) { return mensagem; }
+    var info = ESTADOS[estadoAtual.status_alerta] || ESTADOS[1];
+    // Dados de teste ou medição antiga não ganham "Sinal verde/vermelho": a cor não vale para a lavoura.
+    var inicio = (neutroAtual || estadoAtual.leitura_desatualizada) ? "Atenção." : "Sinal " + info.cor + ".";
+    // A mensagem que já diz o estado dispensa o título (sem "perigo" repetido).
+    var jaDizEstado = /^(Urgente|Perigo|Atenção|Tudo bem)/i.test(mensagem);
+    return jaDizEstado ? inicio + " " + mensagem : inicio + " " + (estadoAtual.titulo || "") + ". " + mensagem;
+  }
+
+  function marcarFalando(ativo) {
+    falando = ativo;
+    if (!ativo) { fimFalaEm = Date.now(); }
+    $("botao-voz").setAttribute("data-falando", ativo ? "true" : "false");
+    definirTexto("botao-voz-texto", ativo ? "Ouvir de novo" : (semVozPt ? "Ouvir o sinal" : "Ouvir orientação"));
+  }
+
+  function tocarBipes(nivel) {
+    try {
+      contextoAudio = contextoAudio || new (window.AudioContext || window.webkitAudioContext)();
+      contextoAudio.resume();
+      var bipe = BIPES[nivel] || BIPES[1];
+      var instante = contextoAudio.currentTime + 0.05;
+      for (var i = 0; i < bipe[0]; i++) {
+        var oscilador = contextoAudio.createOscillator();
+        var volume = contextoAudio.createGain();
+        oscilador.frequency.value = bipe[1];
+        volume.gain.setValueAtTime(0.6, instante);
+        volume.gain.exponentialRampToValueAtTime(0.0001, instante + bipe[2]);
+        oscilador.connect(volume);
+        volume.connect(contextoAudio.destination);
+        oscilador.start(instante);
+        oscilador.stop(instante + bipe[2]);
+        instante += bipe[2] + bipe[3];
+      }
+    } catch (erro) { /* aparelho sem áudio: o semáforo e o texto continuam valendo */ }
+  }
+
+  function nivelAtual() { return estadoAtual && ESTADOS.hasOwnProperty(estadoAtual.status_alerta) ? estadoAtual.status_alerta : 1; }
+
+  function vozLenta() { return lerLocal(CHAVE_VOZ_LENTA) === "1"; }
+
+  // opcoes.ritmo (velocidade da fala) e opcoes.fila (não interrompe a fala anterior).
+  function falarTexto(texto, opcoes) {
+    var sintese = window.speechSynthesis;
+    var config = opcoes || {};
+    if (!config.fila) { sintese.cancel(); }
+    var fala = new SpeechSynthesisUtterance(texto);
+    fala.lang = "pt-BR";
+    fala.rate = config.ritmo || (vozLenta() ? RITMO_LENTO : RITMO_NORMAL);
+    if (vozEscolhida) { fala.voice = vozEscolhida; }
+    var comecou = false;
+    fala.onstart = function () { comecou = true; clearTimeout(temporizadorInicioFala); marcarFalando(true); };
+    fala.onend = function () { marcarFalando(false); };
+    fala.onerror = function (evento) {
+      clearTimeout(temporizadorInicioFala);
+      marcarFalando(false);
+      var motivo = evento && evento.error;
+      // Sem permissão (sem toque na tela) ou fala interrompida não querem dizer que falta voz.
+      if (motivo === "not-allowed" || motivo === "interrupted" || motivo === "canceled") { return; }
+      ativarModoSemVoz();
+      tocarBipes(nivelAtual());
+    };
+    clearTimeout(temporizadorInicioFala);
+    var ativado = !navigator.userActivation || navigator.userActivation.hasBeenActive;
+    if (ativado && !config.fila) {
+      // A voz não começou em 1,5 s: este celular fala calado; passa para os bipes.
+      temporizadorInicioFala = setTimeout(function () {
+        if (!comecou) { sintese.cancel(); ativarModoSemVoz(); if (!config.semBipes) { tocarBipes(nivelAtual()); } }
+      }, ESPERA_INICIO_FALA_MS);
+    }
+    sintese.speak(fala);
+  }
+
+  // Anuncia: fala em pt-BR quando possível; senão, bipes pela cor (avisos e diálogos não bipam).
+  function anunciar(texto, opcoes) {
+    var config = opcoes || {};
+    if (!config.semBipes) { ultimoAnuncioEm = Date.now(); }
+    if (estadoAtual && !config.semBipes) { chaveAnunciada = chaveAnuncio(estadoAtual); }
+    var vozes = suportaVoz ? (window.speechSynthesis.getVoices() || []) : [];
+    if (suportaVoz && !semVozPt) { escolherVoz(); }
+    // Lista de vozes carregada e nenhuma em português: o celular não sabe falar pt-BR.
+    if (!suportaVoz || semVozPt || (vozes.length && !vozEscolhida)) {
+      ativarModoSemVoz();
+      if (!config.semBipes) { tocarBipes(nivelAtual()); }
+      return;
+    }
+    falarTexto(texto || falaCurta(), config);
+  }
+
+  // Botão de voz: curta → completa ("para saber mais") → curta devagar; repetir 2 vezes lembra a fala lenta.
+  function aoTocarVoz() {
+    vozAutomatica = true;
+    gravarLocal(CHAVE_VOZ, "1");
+    document.body.classList.add("voz-automatica");
+    var seguida = etapaVoz > 0 && (falando || Date.now() - fimFalaEm <= JANELA_MAIS_DETALHE_MS);
+    registrarEvento("ouviu", String(nivelAtual()));
+    if (!seguida) { etapaVoz = 1; repeticoesVoz = 0; anunciar(falaCurta()); return; }
+    repeticoesVoz += 1;
+    if (repeticoesVoz >= 2) { gravarLocal(CHAVE_VOZ_LENTA, "1"); }
+    if (etapaVoz === 1) { etapaVoz = 2; anunciar(textoLongo()); return; }
+    etapaVoz = 3;
+    anunciar(falaCurta(), { ritmo: RITMO_REPETICAO });
+  }
+
+  /* ------------- Toques que falam, "Feito" e técnico -------------- */
+  // Evento da tela para o resumo do técnico (nunca de teste ou demonstração); falha de rede não incomoda.
+  function registrarEvento(tipo, detalhe) {
+    if (estadoAtual && (estadoAtual.demonstracao_ativa || estadoAtual.dados_simulados)) { return; }
+    if (navigator.onLine !== false) { enviarJson("/api/evento", { tipo: tipo, detalhe: detalhe }).catch(function () {}); }
+  }
+
+  function falarToque(texto, detalhe) {
+    anunciar(texto);
+    registrarEvento(detalhe === "?" ? "ajuda" : "tocou_pictograma", detalhe);
+  }
+
+  // Ajuda montada com o que está na tela agora.
+  function textoAjuda() {
+    var partes = ["A luz diz se está bem.", "O desenho grande diz o motivo."];
+    if ($("acoes").children.length) { partes.push("Os quadrados dizem o que fazer."); }
+    if (!$("feito").hidden) { partes.push("Fez? Toque em Feito."); }
+    partes.push("Precisa de gente? Toque em Técnico.", "Para ouvir de novo, toque no botão verde.");
+    return partes.join(" ");
+  }
+
+  function lerFeitos() {
+    try { return JSON.parse(lerLocal(CHAVE_FEITOS) || "[]") || []; } catch (erro) { return []; }
+  }
+
+  // Envia um "Feito" com o atraso desde o toque; sem rede, guarda para depois.
+  function enviarFeito(item) {
+    return enviarJson("/api/acao_feita", Object.assign({ atraso_s: Math.round((Date.now() - item.em) / 1000) }, item.corpo))
+      .catch(function (erro) {
+        if (!erro.respostaServidor) { gravarLocal(CHAVE_FEITOS, JSON.stringify(lerFeitos().concat([item]).slice(-20))); }
+        throw erro;
+      });
+  }
+
+  function reenviarFeitos() {
+    var pendentes = lerFeitos();
+    if (!pendentes.length) { return; }
+    gravarLocal(CHAVE_FEITOS, null);
+    pendentes.forEach(function (item) { enviarFeito(item).catch(function () {}); });
+  }
+
+  function chaveFeito(dados) { return (dados.causa || "") + "|" + (dados.id_leitura || ""); }
+
+  // Botão "Feito" em três estados: pronto → desfazer (15 s) → feito às HH:MM (enquanto a causa for a mesma).
+  function mostrarFeito(estado, hora) {
+    var botao = $("feito");
+    botao.setAttribute("data-estado-feito", estado);
+    var texto = estado === "desfazer" ? "Desfazer" : estado === "feito" ? "Feito às " + hora : "Feito";
+    $("feito-icone").setAttribute("href", estado === "desfazer" ? "#i-desfazer" : "#i-check");
+    definirTexto("feito-texto", texto);
+    botao.setAttribute("aria-label", texto);
+    botao.setAttribute("aria-disabled", estado === "feito" ? "true" : "false");
+  }
+
+  // A marca de "Feito" vale enquanto a causa e a leitura forem as mesmas.
+  function atualizarFeito(dados) {
+    if (feitoMarcado && feitoMarcado.chave === chaveFeito(dados)) { return; }
+    feitoMarcado = null;
+    clearTimeout(temporizadorFeito);
+    mostrarFeito("pronto");
+  }
+
+  function aoTocarFeito() {
+    var botao = $("feito");
+    var estado = botao.getAttribute("data-estado-feito");
+    if (estado === "feito") { mostrarAviso(botao.getAttribute("aria-label") + "."); return; }
+    if (estado === "desfazer") {
+      if (feitoMarcado && Date.now() - feitoMarcado.em >= TRAVA_DESFAZER_MS) { desfazerFeito(); }
+      return;
+    }
+    var d = estadoAtual || {};
+    var item = { em: Date.now(), corpo: { codigo_acao: ((d.acoes_detalhe || [])[0] || {}).codigo || "NADA_A_FAZER", causa: d.causa, id_leitura: d.id_leitura } };
+    var marcado = { chave: chaveFeito(d), em: item.em, hora: horaMinuto(new Date()), item: item, id: null, pedido: null };
+    feitoMarcado = marcado;
+    d.causa_silenciada = true;
+    mostrarFeito("desfazer");
+    clearTimeout(temporizadorFeito);
+    temporizadorFeito = setTimeout(function () { mostrarFeito("feito", marcado.hora); }, TEMPO_DESFAZER_MS);
+    marcado.pedido = enviarFeito(item).then(function (r) {
+      marcado.id = r.id_acao;
+      if (feitoMarcado === marcado) { mostrarAviso(r.fala + " Se não fez, toque de novo para desfazer."); }
+    }, function (erro) {
+      if (feitoMarcado === marcado) {
+        mostrarAviso((erro.respostaServidor ? erro.message : "Anotado. Aviso o computador quando a ligação voltar.") + " Se não fez, toque de novo para desfazer.");
+      }
+    });
+  }
+
+  function desfazerFeito() {
+    var marcado = feitoMarcado;
+    feitoMarcado = null;
+    clearTimeout(temporizadorFeito);
+    mostrarFeito("pronto");
+    if (estadoAtual) { estadoAtual.causa_silenciada = false; }
+    marcado.pedido.then(function () {
+      if (marcado.id) { return enviarJson("/api/acao_feita/desfazer", { id_acao: marcado.id }); }
+      // Ainda não tinha saído do celular (sem rede): basta tirar da fila.
+      gravarLocal(CHAVE_FEITOS, JSON.stringify(lerFeitos().filter(function (item) { return item.em !== marcado.em; })));
+    }).then(function () { mostrarAviso("Pronto, desfeito."); }).catch(avisarErro);
+  }
+
+  // "Chamar o técnico": confirma, anota no computador e abre o WhatsApp com o recado pronto.
+  function chamarTecnico() {
+    abrirDialogo({ icone: "#i-telefone", texto: "Chamar o técnico?" }).then(function (resposta) {
+      if (!resposta.ok) { return; }
+      enviarJson("/api/pedido_ajuda", {}).then(function (r) {
+        mostrarAviso(r.fala);
+        if (r.link) { window.location.href = r.link; }
+      }).catch(avisarErro);
+    });
+  }
+
+  // Vermelho de verdade continua valendo: repete a fala curta (ou os bipes) e vibra, só com a página à vista.
+  // Nunca no neutro (teste, demonstração de outro aparelho) nem com notícia antiga.
+  function repetirAlertaVermelho() {
+    // "Feito" recente para esta causa: o alerta já foi atendido e não repete (efeito "lobo").
+    if (!estadoAtual || estadoAtual.status_alerta !== 2 || semLigacao || confiancaAtual !== "viva" || neutroAtual || estadoAtual.causa_silenciada) { return; }
+    if (document.visibilityState !== "visible") { return; }
+    var intervalo = (Number(estadoAtual.intervalo_repeticao_alerta_segundos) || 600) * 1000;
+    if (!ultimoAnuncioEm) { ultimoAnuncioEm = Date.now(); return; }
+    if (Date.now() - ultimoAnuncioEm < intervalo) { return; }
+    ultimoAnuncioEm = Date.now();
+    try { if (navigator.vibrate) { navigator.vibrate([400, 200, 400]); } } catch (erro) { /* sem vibração */ }
+    if (vozAutomatica) { anunciar(falaCurta()); }
+  }
+
+  /* ------------------------ Troca de cultura ------------------------ */
+  function verificarTrocaCultura(dados) {
+    var faixa = $("faixa-troca");
+    var quando = dados.cultura_alterada_em;
+    var segundos = dados.segundos_desde_troca_cultura;
+    if (!quando || segundos === null || segundos === undefined || segundos >= JANELA_AVISO_TROCA_S) {
+      if (trocaExibidaEm && Date.now() - trocaExibidaEm > JANELA_AVISO_TROCA_S * 1000) { faixa.hidden = true; }
+      return;
+    }
+    if (lerLocal(CHAVE_TROCA) === quando) { return; }
+    gravarLocal(CHAVE_TROCA, quando);
+    var data = interpretarDataHora(quando);
+    var texto = "A plantação foi trocada para " + (dados.nome_cultura || "outra plantação") + (data ? " às " + horaMinuto(data) : "");
+    definirTexto("faixa-troca-texto", texto);
+    faixa.hidden = false;
+    trocaExibidaEm = Date.now() - segundos * 1000;
+    // Falado se a pessoa já tocou na página (o navegador deixa falar) ou ligou a voz automática.
+    if (vozAutomatica || (navigator.userActivation || {}).hasBeenActive) { anunciar(texto + ".", { semBipes: true }); }
+  }
+
+  // Marca como pressionado o botão (da plantação ou do cenário) cujo código for o pedido.
+  function marcarPressionado(seletor, codigo) {
+    var botoes = document.querySelectorAll(seletor);
+    for (var i = 0; i < botoes.length; i++) {
+      botoes[i].setAttribute("aria-pressed", botoes[i].getAttribute("data-codigo") === codigo ? "true" : "false");
+    }
+  }
+  function marcarCulturaAtiva(codigo) { marcarPressionado(".botao-cultura", codigo); }
+
+  function carregarCulturas() {
+    return pedirJson("/api/culturas", { cache: "no-cache" }).then(function (dados) {
+      var grupo = $("culturas-botoes");
+      grupo.textContent = "";
+      var culturas = dados.culturas || [];
+      culturas.forEach(function (cultura) {
+        grupo.appendChild(criarBotao("botao-cultura", cultura.codigo, cultura.codigo === dados.cultura_ativa,
+          ICONES_CULTURA[cultura.codigo] || "#i-broto", cultura.rotulo_curto || cultura.nome_comum,
+          function () { pedirTrocaCultura(cultura); }));
+      });
+      // Com uma cultura só, a escolha não faz sentido: o grupo some.
+      $("culturas").hidden = culturas.length < 2;
+    }).catch(function () { $("culturas").hidden = true; });
+  }
+
+  // Dois passos: o toque fala o nome e abre um diálogo grande; só o "Sim" troca a plantação de todos.
+  function pedirTrocaCultura(cultura) {
+    if (estadoAtual && estadoAtual.codigo_cultura === cultura.codigo) { return; }
+    anunciar(cultura.nome_comum + ".", { semBipes: true });
+    abrirDialogo({ icone: ICONES_CULTURA[cultura.codigo] || "#i-broto", texto: "O aparelho vai cuidar do " + cultura.nome_comum + ". Confirmar?", fila: true }).then(function (resposta) {
+      if (resposta.ok) { trocarCultura(cultura.codigo, cultura.nome_comum); }
+    });
+  }
+
+  function trocarCultura(codigo, nome) {
+    marcarCulturaAtiva(codigo);
+    enviarProtegido("/api/cultura", { codigo: codigo }).then(function (dados) {
+      if (dados.status) {
+        if (dados.status.cultura_alterada_em) { gravarLocal(CHAVE_TROCA, dados.status.cultura_alterada_em); }
+        guardarUltimoStatus(dados.status);
+        aplicarStatus(dados.status);
+      }
+      mostrarAviso("Agora o aparelho cuida do " + nome + ".");
+    }).catch(function (erro) {
+      if (estadoAtual) { marcarCulturaAtiva(estadoAtual.codigo_cultura); }
+      avisarErro(erro);
+    });
+  }
+
+  /* ------------------------- Diálogo modal ------------------------- */
+  // <dialog> nativo: fundo inerte, Esc cancela, foco preso dentro e devolvido a quem abriu.
+  var resolverDialogo = null;
+  var aoConfirmarDialogo = null;
+  var focoAntesDialogo = null;
+  var contagemDialogo = null;
+
+  function abrirDialogo(opcoes) {
+    if (resolverDialogo) { fecharDialogo(false); }
+    var dialogo = $("dialogo");
+    var campo = $("dialogo-pin");
+    focoAntesDialogo = document.activeElement;
+    $("dialogo-icone").setAttribute("href", opcoes.icone || "#i-atencao");
+    definirTexto("dialogo-texto", opcoes.texto);
+    definirTexto("dialogo-sim-texto", opcoes.pin ? "Entrar" : "Sim");
+    definirTexto("dialogo-nao-texto", opcoes.pin ? "Cancelar" : "Não");
+    campo.hidden = !opcoes.pin;
+    campo.value = "";
+    $("dialogo-erro").hidden = true;
+    $("dialogo-sim").disabled = false;
+    aoConfirmarDialogo = opcoes.aoConfirmar || null;
+    if (!dialogo.open) { dialogo.showModal(); }
+    (opcoes.pin ? campo : $("dialogo-nao")).focus();
+    // Resposta a um toque: falado sempre que houver voz em português (mesmo na 1ª visita).
+    anunciar(opcoes.texto, { semBipes: true, fila: opcoes.fila });
+    if (opcoes.erro) { mostrarErroDialogo(opcoes.erro); }
+    return new Promise(function (resolver) { resolverDialogo = resolver; });
+  }
+
+  function fecharDialogo(ok) {
+    var resolver = resolverDialogo;
+    var dialogo = $("dialogo");
+    resolverDialogo = null;
+    aoConfirmarDialogo = null;
+    clearInterval(contagemDialogo);
+    if (dialogo.open) { dialogo.close(); }
+    var volta = focoAntesDialogo && document.contains(focoAntesDialogo) && focoAntesDialogo.offsetParent !== null ? focoAntesDialogo : $("botao-voz");
+    volta.focus();
+    if (resolver) { resolver({ ok: ok, pin: $("dialogo-pin").value.trim() }); }
+  }
+
+  // Senha errada: o diálogo continua aberto, a mensagem aparece na linha e é falada; bloqueio com contagem.
+  function mostrarErroDialogo(erro) {
+    var linha = $("dialogo-erro");
+    var botao = $("dialogo-sim");
+    var campo = $("dialogo-pin");
+    clearInterval(contagemDialogo);
+    if (erro.status === 429) {
+      var restante = Math.max(1, Number(erro.segundos) || 60);
+      var mostrar = function () { definirTexto("dialogo-sim-texto", "Espere " + restante + " segundos"); };
+      botao.disabled = true;
+      mostrar();
+      contagemDialogo = setInterval(function () {
+        restante -= 1;
+        if (restante > 0) { mostrar(); return; }
+        clearInterval(contagemDialogo);
+        botao.disabled = false;
+        definirTexto("dialogo-sim-texto", "Entrar");
+      }, 1000);
+    }
+    definirTexto("dialogo-erro", erro.message);
+    linha.hidden = false;
+    anunciar(erro.message, { semBipes: true });
+    campo.value = "";
+    if (!campo.hidden) { campo.focus(); }
+  }
+
+  function confirmarDialogo() {
+    if (!aoConfirmarDialogo) { fecharDialogo(true); return; }
+    var botao = $("dialogo-sim");
+    if (botao.disabled) { return; }
+    botao.disabled = true;
+    aoConfirmarDialogo($("dialogo-pin").value.trim()).then(function () { fecharDialogo(true); }, function (erro) {
+      botao.disabled = false;
+      if (erro.status === 403 || erro.status === 429) {
+        gravarLocal(CHAVE_PIN, null, true);
+        mostrarErroDialogo(erro);
+        return;
+      }
+      fecharDialogo(false);
+      avisarErro(erro);
+    });
+  }
+
+  // Tab e Shift+Tab giram só entre os controles visíveis do diálogo.
+  function prenderFoco(evento) {
+    if (evento.key !== "Tab") { return; }
+    var controles = Array.prototype.filter.call($("dialogo").querySelectorAll("button, input"), function (e) { return !e.hidden && !e.disabled; });
+    if (!controles.length) { return; }
+    var posicao = controles.indexOf(document.activeElement);
+    var proximo = evento.shiftKey ? (posicao <= 0 ? controles.length - 1 : posicao - 1) : (posicao + 1) % controles.length;
+    evento.preventDefault();
+    controles[proximo].focus();
+  }
+
+  /* ---------------------- Demonstração (banca) -------------------- */
+  function marcarCenarioAtivo(codigo) { marcarPressionado(".botao-cenario", codigo); }
+
+  // Hora fixa de término (nada muda a cada segundo): só o início e o fim são anunciados.
+  function atualizarFaixaDemo() {
+    var ativo = !!(estadoAtual && estadoAtual.demonstracao_ativa && segundosDemo > 0);
+    document.body.classList.toggle("demo-ativa", ativo);
+    if (ativo) { definirTexto("faixa-demo-texto", (estadoAtual.rotulo_cenario || "Demonstração") + " · volta ao normal às " + horaMinuto(new Date(fimDemoEm))); }
+  }
+
+  function travarBotoesDemo(travar) {
+    var botoes = document.querySelectorAll(".botao-cenario, .botao-normal");
+    for (var i = 0; i < botoes.length; i++) { botoes[i].disabled = travar; }
+  }
+
+  function pedirBanca(url, corpo, aviso) {
+    travarBotoesDemo(true);
+    enviarProtegido(url, corpo).then(function (dados) {
+      aplicarStatus(dados.status || dados);
+      mostrarAviso(aviso);
+    }).catch(avisarErro).finally(function () { travarBotoesDemo(false); });
+  }
+  function iniciarCenario(cenario) { pedirBanca("/api/demonstracao", { cenario: cenario.codigo }, cenario.rotulo + ": pronto."); }
+  function voltarAoNormal() { pedirBanca("/api/demonstracao/encerrar", {}, "De volta ao funcionamento normal."); }
+
+  function carregarCenarios() {
+    if (cenariosCarregados) { return Promise.resolve(); }
+    return pedirJson("/api/cenarios").then(function (dados) {
+      cenariosCarregados = true;
+      var grade = $("cenarios");
+      grade.textContent = "";
+      (dados.cenarios || []).forEach(function (cenario) {
+        var botao = criarBotao("botao-cenario", cenario.codigo, cenario.codigo === dados.cenario_ativo,
+          cenario.icone || "#i-atencao", String(cenario.rotulo || cenario.codigo).replace(/^Simular\s+/i, ""),
+          function () { iniciarCenario(cenario); });
+        botao.setAttribute("data-cor", cenario.cor);
+        botao.setAttribute("aria-label", cenario.rotulo);
+        grade.appendChild(botao);
+      });
+    }).catch(function () { mostrarAviso("Sem os cenários da banca agora."); });
+  }
+
+  // O rótulo da banca só abre com toque longo (2 s): um toque acidental não muda nada.
+  function prepararAreaBanca() {
+    var area = $("area-banca");
+    var rotulo = $("rotulo-banca");
+    var temporizador = null;
+    var abertoPorToqueLongo = false;
+    function cancelar() { clearTimeout(temporizador); temporizador = null; }
+    rotulo.addEventListener("pointerdown", function () {
+      cancelar();
+      if (area.open) { return; }
+      temporizador = setTimeout(function () { abertoPorToqueLongo = true; area.open = true; }, TOQUE_LONGO_MS);
+    });
+    ["pointerup", "pointerleave", "pointercancel"].forEach(function (evento) { rotulo.addEventListener(evento, cancelar); });
+    rotulo.addEventListener("contextmenu", function (evento) { evento.preventDefault(); });
+    rotulo.addEventListener("click", function (evento) {
+      if (abertoPorToqueLongo) { abertoPorToqueLongo = false; evento.preventDefault(); return; }
+      // Fechar é livre; abrir com toque curto não (teclado abre normalmente).
+      if (!area.open && evento.detail !== 0) { evento.preventDefault(); mostrarAviso("Segure o dedo 2 segundos para abrir."); }
+    });
+    // Com a banca aberta neste aparelho, a demonstração aparece com a cor (não é mais "de fora").
+    area.addEventListener("toggle", function () {
+      if (area.open) { carregarCenarios(); }
+      if (estadoAtual) { aplicarStatus(estadoAtual); }
+    });
+    if (modoBanca) { document.body.classList.add("modo-banca"); area.open = true; }
+  }
+
+  /* ------------------------ Barra de voz -------------------------- */
+  // A altura real da barra fixa define o fim da página, a rolagem do foco e a posição do aviso flutuante.
+  function acompanharBarraVoz() {
+    var barra = $("barra-voz");
+    var aplicar = function () { document.documentElement.style.setProperty("--altura-barra", Math.ceil(barra.getBoundingClientRect().height) + "px"); };
+    aplicar();
+    if (typeof ResizeObserver === "function") { new ResizeObserver(aplicar).observe(barra); }
+  }
+
+  /* --------------------------- Início ----------------------------- */
+  $("botao-voz").addEventListener("click", aoTocarVoz);
+  $("botao-normal").addEventListener("click", voltarAoNormal);
+  $("causa").onclick = function () { falarToque((estadoAtual && (confiancaAtual === "demonstracao" ? MENSAGEM_DEMO : estadoAtual.causa_descricao)) || $("titulo").textContent, "CAUSA"); };
+  $("ajuda").onclick = function () { falarToque(textoAjuda(), "?"); };
+  $("feito").onclick = aoTocarFeito;
+  $("tecnico").onclick = chamarTecnico;
+  $("dialogo-sim").addEventListener("click", confirmarDialogo);
+  $("dialogo-nao").addEventListener("click", function () { fecharDialogo(false); });
+  $("dialogo").addEventListener("cancel", function (evento) { evento.preventDefault(); fecharDialogo(false); });
+  $("dialogo").addEventListener("keydown", function (evento) {
+    prenderFoco(evento);
+    if (evento.key === "Enter" && evento.target === $("dialogo-pin")) { evento.preventDefault(); confirmarDialogo(); }
+  });
+  $("faixa-troca-fechar").addEventListener("click", function () { $("faixa-troca").hidden = true; });
+  $("aviso-voz-fechar").addEventListener("click", function () { $("aviso-voz").setAttribute("data-fechado", ""); });
+  prepararAreaBanca();
+  acompanharBarraVoz();
+
+  vozAutomatica = lerLocal(CHAVE_VOZ) === "1";
+  document.body.classList.toggle("voz-automatica", vozAutomatica);
+  if (suportaVoz) {
+    escolherVoz();
+    if ("onvoiceschanged" in window.speechSynthesis) { window.speechSynthesis.onvoiceschanged = escolherVoz; }
+  } else {
+    ativarModoSemVoz();
+  }
+  setInterval(function () {
+    if (segundosDemo > 0) {
+      segundosDemo -= 1;
+      if (segundosDemo === 0) { atualizarStatus(); }
+    }
+    repetirAlertaVermelho();
+  }, 1000);
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") { clearTimeout(temporizadorStatus); temporizadorStatus = null; }
+    else { atualizarStatus(); }
+  });
+  window.addEventListener("online", function () { atualizarStatus(); });
+  window.addEventListener("offline", function () { mostrarUltimaNoticia("sem-ligacao"); });
+
+  // Estado embutido pelo servidor: a página já nasce com a cor certa, antes de qualquer consulta.
+  var inicial = null;
+  try { inicial = JSON.parse($("estado-inicial").textContent || "null"); } catch (erro) { inicial = null; }
+  if (inicial && typeof inicial === "object" && "status_alerta" in inicial) {
+    guardarUltimoStatus(inicial);
+    aplicarStatus(inicial);
+  }
+  carregarCulturas().finally(function () { agendarConsulta(inicial ? INTERVALO_ATUALIZACAO_MS : 0); });
+})();
+</script>
+</body>
+</html>

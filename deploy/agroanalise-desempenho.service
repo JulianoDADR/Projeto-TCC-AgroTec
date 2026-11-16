@@ -1,0 +1,23 @@
+# AgroAnálise — portão de segurança local da IA de prognóstico (src/desempenho_local.py).
+# Disparado de hora em hora por agroanalise-desempenho.timer: mede o Brier das previsões de 12 h já
+# resolvidas no próprio sítio, suspende a antecipação pelo modelo se ela não vencer a climatologia,
+# recalibra (Platt) e ajusta a mínima noturna local. Instalado por deploy/instalar.sh em
+# /etc/systemd/system/ (o instalador troca /opt/agroanalise pela pasta real da instalação).
+#   systemctl list-timers agroanalise-desempenho.timer
+#   journalctl -u agroanalise-desempenho
+[Unit]
+Description=AgroAnalise - avaliacao local do prognostico (portao de seguranca)
+After=agroanalise-coletor.service
+
+[Service]
+Type=oneshot
+User=agroanalise
+Group=agroanalise
+WorkingDirectory=/opt/agroanalise
+Environment=PYTHONUNBUFFERED=1
+# Via /bin/sh + exec (mesmo padrão do coletor): passa no "systemd-analyze verify" antes de o .venv existir.
+ExecStart=/bin/sh -c 'exec /opt/agroanalise/.venv/bin/python /opt/agroanalise/src/desempenho_local.py'
+# Roda com prioridade baixa para nunca atrasar o coletor nem a página.
+Nice=15
+IOSchedulingClass=idle
+TimeoutStartSec=600

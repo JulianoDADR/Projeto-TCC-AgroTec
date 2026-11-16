@@ -1,0 +1,202 @@
+/*
+ * AgroAnálise — CSS NÃO CRÍTICO da página do agricultor (v4).
+ *
+ * Servido em /static/agro.<hash>.css (minificado, gzip, cache imutável de um
+ * ano) e carregado sem bloquear a primeira pintura. O que aparece na primeira
+ * tela (topo, semáforo, cartão, ações, retorno, barra de voz) fica no <style>
+ * inline de index.html; aqui ficam o que só aparece depois de um toque ou
+ * abaixo da dobra, e os modos especiais (cores forçadas, movimento reduzido).
+ * Tamanhos de texto em rem (acompanham a fonte do celular); o semáforo, que é
+ * gráfico, continua em px/vw.
+ */
+
+:root { --terra: #7a4b2a; --demo: #4b3fa8; --demo-fundo: #ece9ff; --neutro-acao: #3d4448; }
+
+/* Acabamento da primeira tela (o CSS crítico só tem a geometria e as cores dos estados). */
+body { background: linear-gradient(color-mix(in srgb, var(--estado) 18%, var(--fundo)), var(--fundo) 260px, var(--fundo-2)); }
+.icone { stroke-linecap: round; stroke-linejoin: round; }
+button { cursor: pointer; }
+.chip-estado { border-radius: 18px; }
+.botao-ajuda, .botao-voz, .cartao-estado, .acoes { border-radius: 22px; }
+.causa { border-radius: 18px; }
+.acao__quadro { border-radius: 20px; }
+.retorno button { border-radius: 16px; }
+.acesa .lampada { box-shadow: inset 0 0 0 calc(var(--lampada) * .06) #fff, 0 0 calc(var(--lampada) * .22) calc(var(--lampada) * .05) color-mix(in srgb, var(--cor) 75%, transparent); }
+.marca__selo { border-radius: 13px; background: var(--marca); color: #e9f7d9; }
+.marca__nome { color: #173d21; }
+.cultura-atual { border-radius: 999px; background: var(--superficie); }
+.chip-estado__bola { color: rgba(30, 10, 0, .8); }
+.cultura-atual .icone { color: var(--terra); }
+.aviso-teste { border-radius: 12px; background: #fff4d6; color: #4f3a00; border-color: #8a6a12; }
+.acao__quando { border-radius: 50%; background: #fff; color: #7a4600; }
+.botao-voz { background: linear-gradient(#235c31, #1a4724); box-shadow: 0 6px 0 #0f2c16; }
+
+/* Ícones da primeira tela, medidos pelo quadro de tamanho fixo (chegam sem deslocar nada).
+   Na lâmpada acesa, o desenho escuro (X, !, ✓) diz a cor pela forma. */
+.lampada .icone { position: relative; width: 46%; height: 46%; stroke-width: 2.6; color: rgba(255, 255, 255, .07); }
+.acesa .lampada .icone { color: rgba(30, 10, 0, .62); }
+/* Neutro: o aparelho aparece apagado (cinza-escuro), para nenhuma lâmpada parecer acesa (integração v4). */
+body[data-estado="neutro"] .lampada--amarelo .icone { color: #4f575c; }
+.causa > .icone, .acao__quadro > .icone { width: 70%; height: 70%; stroke-width: 1.9; }
+.acao__quando .icone { width: 24px; height: 24px; stroke-width: 2; }
+.chip-estado__bola .icone { width: 18px; height: 18px; stroke-width: 3; }
+.retorno .icone { width: 30px; height: 30px; stroke-width: 2.6; }
+
+/* Foco visível, brilho pulsando no vermelho de verdade, selo de som na causa e dica da voz automática. */
+:focus-visible { outline: 4px solid #1b5fd1; outline-offset: 3px; }
+.semaforo { background: linear-gradient(#2c3531, #0d1210); box-shadow: inset 0 -8px 16px rgba(0, 0, 0, .55), 0 18px 30px -18px rgba(18, 26, 22, .65); }
+/* Notícia antiga: carcaça hachurada (forma, não cor), além da borda tracejada clara e do relógio. */
+body.desatualizada .semaforo { background: repeating-linear-gradient(-45deg, #2c3531 0 8px, #6e7672 8px 16px); }
+.cartao-estado { box-shadow: 0 10px 30px -12px rgba(40, 35, 20, .35); }
+body[data-estado="vermelho"]:not(.desatualizada) .acesa .lampada { animation: pulsar 1.6s ease-in-out infinite; }
+@keyframes pulsar { 50% { filter: brightness(1.08); } }
+.causa .selo-som { display: block; position: absolute; right: -8px; bottom: -8px; width: 26px; height: 26px; padding: 3px; border-radius: 50%; background: #fff; color: var(--marca); border: 2px solid var(--marca); stroke-width: 2.4; }
+body.voz-automatica .dica-voz { display: block; font-size: 1rem; font-weight: 700; }
+
+/* Rolagem: o foco nunca para atrás da barra de voz; puxar para baixo não recarrega sem querer. */
+html { -webkit-text-size-adjust: 100%; overscroll-behavior-y: contain; scroll-padding-bottom: calc(var(--altura-barra) + 12px); }
+.so-leitor { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.soquete { box-shadow: inset 0 3px 6px rgba(0, 0, 0, .9); }
+
+/* Esmaecido: relógio sobre a lâmpada acesa; ações da última notícia guardada com quadro tracejado. */
+.selo-relogio { position: absolute; right: -4%; bottom: -4%; width: 42%; height: 42%; padding: 6%; border-radius: 50%; background: #fff; color: #15211a; border: 2px solid #15211a; }
+body.desatualizada .acesa .selo-relogio { display: block; }
+.acao[data-antiga] .acao__quadro { border-style: dashed; }
+.acao[data-acao="NADA_A_FAZER"] .acao__quadro { background: var(--verde-fundo); color: var(--verde-texto); border-color: var(--verde); }
+
+/* "Feito" depois do toque: desfazer por 15 s e, depois, feito às HH:MM. */
+#feito[data-estado-feito="desfazer"] { background: #fff; color: var(--marca); border-style: dashed; }
+#feito[data-estado-feito="feito"] { background: var(--verde-fundo); color: var(--verde-texto); border-color: var(--verde); }
+
+/* Explicação longa (abaixo da primeira tela no celular). */
+.cartao-explicacao { background: var(--superficie); border-radius: 22px; border: 2px solid var(--borda); padding: 14px 16px; }
+.mensagem { margin: 0; font-size: clamp(1.25rem, 5.4vw, 1.65rem); line-height: 1.42; font-weight: 500; text-wrap: pretty; }
+.linha-info { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 10px; align-items: center; font-size: 1rem; color: var(--texto-suave); }
+.linha-info > span { display: inline-flex; align-items: center; gap: 6px; }
+.chip-corrigida { font-weight: 700; color: #4f3f14; background: #f6efda; border: 2px dashed #8f7a3c; border-radius: 999px; padding: 4px 10px; }
+
+/* Selo técnico de modo (só com ?banca=1), aviso de falta de voz e "leitura corrigida". */
+body.modo-banca .selo-modo { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px 6px 8px; border-radius: 999px; background: var(--superficie); border: 2px solid var(--borda); font-size: 1rem; font-weight: 800; }
+.selo-modo .icone { width: 24px; height: 24px; color: var(--terra); }
+body.sem-voz .aviso-voz { display: flex; align-items: center; gap: 8px; padding: 6px 4px 6px 10px; border-radius: 12px; background: #fff; border: 3px solid #b3261e; color: #5e1410; font-weight: 700; font-size: 1rem; line-height: 1.2; }
+body.sem-voz .aviso-voz[data-fechado] { display: none; }
+.aviso-voz > .icone { width: 28px; height: 28px; }
+.aviso-voz span { flex: 1; min-width: 0; }
+.botao-voz:active { transform: translateY(4px); box-shadow: 0 2px 0 #0f2c16; }
+.botao-voz[data-falando="true"] .onda { animation: onda 1s ease-in-out infinite; }
+@keyframes onda { 50% { opacity: .25; } }
+
+/* Detalhes recolhidos (números e banca). */
+.detalhes, .area-banca { background: var(--superficie); border: 2px solid var(--borda); border-radius: 18px; }
+.detalhes summary, .area-banca summary { list-style: none; cursor: pointer; min-height: 52px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; font-size: 1.1rem; font-weight: 700; color: var(--texto-suave); }
+summary::-webkit-details-marker { display: none; }
+
+/* Computador e tablet deitado: semáforo vertical com poste ao lado do cartão; barra de voz no fluxo. */
+@media (min-width: 900px) {
+  :root { --lampada: clamp(110px, 20vh, 180px); }
+  body { padding-bottom: 0; }
+  .topo { padding: 16px 24px 10px; }
+  .principal { padding: 0 24px; gap: 20px 40px; align-items: start; grid-template-columns: auto minmax(0, 1fr); }
+  .semaforo { flex-direction: column; }
+  /* Poste do semáforo: desenho só de CSS (nenhum elemento na página). */
+  .area-semaforo::after { content: ""; width: calc(var(--lampada) * .26); height: 22px; background: #4b5450; border-radius: 0 0 6px 6px; }
+  .cartao-estado { padding: 22px 28px 18px; }
+  .barra-voz { position: static; padding: 0; background: none; border: 0; }
+}
+
+/* Aviso de troca de plantação: sobreposto ao topo, sem empurrar a primeira tela. */
+.faixa-troca { position: fixed; z-index: 25; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 14px; font-size: 1rem; font-weight: 700; background: var(--demo-fundo); color: #2b2275; border-bottom: 3px solid var(--demo); box-shadow: 0 6px 16px -8px rgba(30, 24, 90, .5); }
+.faixa-troca > .icone { width: 28px; height: 28px; }
+.faixa-troca span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.botao-fechar { flex: none; width: 48px; height: 48px; border-radius: 14px; border: 2px solid currentColor; background: #fff; cursor: pointer; display: grid; place-items: center; color: inherit; }
+.botao-fechar .icone { width: 22px; height: 22px; }
+
+/* Números da medição. */
+.detalhes summary .icone, .area-banca summary .icone { width: 22px; height: 22px; }
+.seta { margin-left: auto; width: 12px; height: 12px; border: solid currentColor; border-width: 0 3px 3px 0; transform: rotate(45deg); }
+.detalhes[open] .seta { transform: rotate(225deg); }
+.grade-numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: 10px; padding: 0 14px 14px; margin: 0; }
+.numero { background: #f8f5ec; border-radius: 14px; padding: 10px 12px; min-width: 0; }
+.numero dt { display: flex; align-items: center; gap: 6px; font-size: 1rem; color: var(--texto-suave); font-weight: 600; }
+.numero dt .icone { width: 18px; height: 18px; color: var(--terra); }
+.numero dd { margin: 4px 0 0; font-size: 1.45rem; font-weight: 800; overflow-wrap: anywhere; }
+
+/* Plantação monitorada: linha compacta, troca em dois passos. */
+.culturas { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.culturas legend { float: left; width: 100%; margin-bottom: 6px; padding: 0; font-size: 1rem; font-weight: 700; color: var(--texto-suave); }
+.botao-cultura { min-height: 48px; padding: 6px 14px 6px 10px; border-radius: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 1.05rem; font-weight: 800; background: var(--superficie); border: 2px solid var(--borda); }
+.botao-cultura .icone { width: 26px; height: 26px; color: var(--terra); }
+.botao-cultura[aria-pressed="true"] { background: var(--marca); border-color: var(--marca); color: #fff; }
+.botao-cultura[aria-pressed="true"] .icone { color: #f6d9a8; }
+
+/* Área da banca: recolhida; abre com ?banca=1 ou segurando o rótulo por 2 s. */
+.area-banca summary { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+.area-banca[open] summary { color: var(--demo); }
+.painel-demo { padding: 0 12px 14px; }
+.painel-demo p { margin: 0 0 6px; font-size: 1rem; color: var(--texto-suave); }
+.faixa-demo { display: none; align-items: center; gap: 10px; margin-top: 8px; padding: 10px 14px; border-radius: 14px; background: var(--demo); color: #fff; font-size: 1.05rem; font-weight: 700; }
+.faixa-demo .icone { width: 24px; height: 24px; }
+body.demo-ativa .faixa-demo { display: flex; }
+.grade-cenarios { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: 8px; margin-top: 10px; }
+.botao-cenario { min-height: 64px; padding: 10px 8px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; gap: 8px; text-align: left; background: var(--superficie); border: 2px solid var(--borda); font-size: 1rem; font-weight: 800; line-height: 1.2; min-width: 0; overflow-wrap: anywhere; }
+.botao-cenario[data-cor="amarelo"] { border-left: 8px solid var(--amarelo); }
+.botao-cenario[data-cor="verde"] { border-left: 8px solid var(--verde); }
+.botao-cenario[data-cor="vermelho"] { border-left: 8px solid var(--vermelho); }
+.botao-cenario .icone { width: 26px; height: 26px; }
+.botao-cenario[aria-pressed="true"] { border-color: var(--demo); background: var(--demo-fundo); }
+.botao-cenario[disabled], .botao-normal[disabled] { cursor: progress; background: #eeeae0; }
+.botao-normal { width: 100%; margin-top: 10px; min-height: 56px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 1.1rem; font-weight: 800; color: var(--marca); background: #eef6ee; border: 3px solid var(--marca-clara); text-decoration: none; }
+.botao-normal .icone { width: 26px; height: 26px; }
+
+/* Diálogo modal nativo (confirmação e senha da banca). */
+.dialogo { width: min(440px, calc(100% - 32px)); max-width: none; max-height: calc(100% - 32px); padding: 0; border: 0; border-radius: 24px; background: var(--superficie); color: var(--texto); overflow: auto; }
+.dialogo::backdrop { background: rgba(15, 20, 17, .62); }
+.dialogo__caixa { padding: 22px 18px 18px; text-align: center; }
+.dialogo__icone { width: 84px; height: 84px; margin: 0 auto 10px; border-radius: 24px; display: grid; place-items: center; background: #f6efe1; color: var(--terra); }
+.dialogo__icone .icone { width: 60px; height: 60px; }
+.dialogo__texto { margin: 0 0 16px; font-size: 1.5rem; font-weight: 800; line-height: 1.25; overflow-wrap: anywhere; }
+.dialogo__pin { width: 100%; min-height: 56px; margin-bottom: 12px; font: inherit; font-size: 1.75rem; text-align: center; letter-spacing: .3em; border: 3px solid var(--texto-suave); border-radius: 14px; }
+.dialogo__erro { margin: 0 0 12px; padding: 8px 12px; border-radius: 12px; font-size: 1.1rem; font-weight: 800; color: var(--vermelho-texto); background: var(--vermelho-fundo); border: 2px solid var(--vermelho-texto); }
+.dialogo__botoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: 12px; }
+.dialogo__botoes button { min-height: 64px; border-radius: 18px; border: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 6px 10px; font-size: 1.4rem; font-weight: 900; color: #fff; }
+.dialogo__botoes .icone { width: 30px; height: 30px; stroke-width: 3; }
+.botao-sim { background: #1a7a3c; box-shadow: 0 5px 0 #0d4521; }
+.botao-sim[disabled] { background: #4d5a52; box-shadow: none; cursor: progress; }
+.botao-nao { background: var(--neutro-acao); box-shadow: 0 5px 0 #1d2124; }
+
+/* Aviso flutuante (sempre falado também). */
+/* O aviso (toast) só aparece depois de um toque: fica fora do CSS crítico. */
+.toast { position: fixed; visibility: hidden; z-index: 30; left: 50%; bottom: calc(var(--altura-barra) + 10px); transform: translate(-50%, 20px); opacity: 0; pointer-events: none; max-width: calc(100vw - 32px); width: max-content; background: #1d221f; color: #fff; padding: 12px 18px; border-radius: 14px; font-size: 1.05rem; font-weight: 600; transition: opacity .25s ease, transform .25s ease; }
+.toast.visivel { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+@media (min-width: 900px) { .toast { bottom: 28px; } }
+
+/* Cores forçadas (tema de alto contraste): o semáforo mantém as cores, que SÃO a informação. */
+@media (forced-colors: active) {
+  .semaforo, .soquete, .lampada, .chip-estado__bola, .selo-relogio { forced-color-adjust: none; }
+  .barra-voz { background: Canvas; border-top: 2px solid CanvasText; }
+  .causa, .acao__quadro, .cartao-estado, .chip-estado { border-color: CanvasText; }
+  body.desatualizada .semaforo { border-color: CanvasText; }
+  /* O botão de voz (sem borda no tema normal) perdia o contorno e virava só texto (integração v4). */
+  .botao-voz { border: 2px solid ButtonText; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* Integração v4: texto a 200 % no celular de 320 px sem rolagem lateral — o chip do sinal e o
+   rótulo do botão de voz quebram dentro da palavra só quando nem a palavra inteira cabe. */
+.chip-estado { max-width: 100%; }
+#chip-texto, .botao-voz__textos { min-width: 0; overflow-wrap: anywhere; }
+/* "Feito" e "Técnico" lado a lado; com a fonte muito grande, um embaixo do outro. */
+.retorno { flex-wrap: wrap; }
+.retorno button { flex: 1 1 6em; }
+.numero dt { overflow-wrap: anywhere; }
+
+/* Integração v4: zoom do navegador (150 % a 200 % num celular de 360 px = 240 a 180 px de CSS). A lâmpada mínima
+   de 80 px deixava rolagem lateral; abaixo de 320 px ela acompanha a largura (em pixels físicos continua maior
+   que no celular sem zoom). Fica no CSS estático: só vale para quem amplia a página. */
+@media (max-width: 319px) {
+  :root { --lampada: calc((100vw - 48px) / 3.5); }
+  /* A faixa da troca rola com a página (fixa, ela cobria a tela inteira a 200 %) e o botão de voz mostra só o
+     alto-falante: o rótulo continua para o leitor de tela (fora da vista, não removido). */
+  .faixa-troca { position: static; }
+  .botao-voz__textos { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}

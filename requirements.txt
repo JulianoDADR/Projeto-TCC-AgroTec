@@ -1,0 +1,14 @@
+# AgroAnálise — dependências Python (testado com Python 3.13)
+# Versões mínimas validadas no ambiente de desenvolvimento (pandas 3.1, numpy 2.5,
+# scikit-learn 1.9, matplotlib 3.11, joblib 1.6, Flask 3.1, pyserial 3.5).
+pandas>=3.0
+numpy>=2.0
+scikit-learn>=1.9
+matplotlib>=3.10
+joblib>=1.4
+flask>=3.1
+pyserial>=3.5
+# Servidor web de produção (src/servidor.py, serviço agroanalise-web) — puro Python, sem compilador.
+waitress>=3.0
+# v3: nenhuma dependência nova no campo. A referência climática (referencia_climatica/*.csv.gz) é lida com
+# pandas; só para baixá-la de novo, fora do campo e com internet: pip install -r requirements-referencia.txt

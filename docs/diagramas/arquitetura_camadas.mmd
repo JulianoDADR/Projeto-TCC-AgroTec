@@ -1,0 +1,161 @@
+---
+title: AgroAnálise v4 — Arquitetura em 4 camadas + operação 24/7 (nomes reais de arquivos e funções)
+---
+%%{init: {"flowchart": {"wrappingWidth": 440, "nodeSpacing": 40, "rankSpacing": 50}}}%%
+flowchart TB
+    agricultor(["Agricultor familiar<br/>celular ou computador no campo"])
+
+    subgraph C1["(1) HARDWARE IoT"]
+        direction TB
+        solo_ar["Fenômeno físico<br/>solo onde o fruto se desenvolve + microclima do ar"]
+        dht["DHT11 (padrão, ±2 °C) ou DHT22 (±0,5 °C) no pino D2<br/>AGRO_SENSOR_AR · em abrigo ventilado a 1,5 m do chão<br/>temperatura_ar °C · umidade_ar %"]
+        hig["Higrômetro resistivo no pino A0<br/>ADC 0..1023 — escala invertida<br/>AGRO_PINO_ALIMENTACAO_SOLO: sonda ligada só 20 ms por medida (lerSoloComPulso)"]
+        fw_media["amostrarHigrometro() a cada 100 ms com millis()<br/>média móvel N = 10 · buffer circular O(1)"]
+        fw_envio["lerSensoresEEnviar() a cada 2000 ms<br/>enviarLinhaProtocolo(): $2,t,ur,solo*XX (XOR)<br/>DHT falhou → $2,nan,nan,solo*XX + #ERRO:DHT11_LEITURA_INVALIDA"]
+        fw_diag["verificarHigrometro()<br/>#AVISO HIGROMETRO_CURTO_CIRCUITO · DESCONECTADO · FORA_DA_FAIXA"]
+        wdt["Watchdog wdt_enable(WDTO_8S) · wdt_reset() no loop · LED heartbeat<br/>banner #AGROANALISE_PRONTO;PROTOCOLO=2<br/>+ #AGROANALISE_PERFIL;PROTOCOLO=2;AR=DHT11;SOLO=RESISTIVO;PULSO=0"]
+        solo_ar --> dht
+        solo_ar --> hig
+        hig --> fw_media --> fw_envio
+        dht --> fw_envio
+        fw_media --> fw_diag
+        fw_envio --> wdt
+    end
+
+    usb[/"USB serial 9600 bps · linhas CR LF<br/>v2: $2,21.0,65.0,72.4*XX · v1 legado: 21.0,65.0,72.4<br/>diagnóstico: linha iniciada por cerquilha"/]
+
+    subgraph C2["(2) INGESTÃO / ENGENHARIA DE DADOS"]
+        direction TB
+        coletor["ColetorAgroAnalise.executar() — loop 24/7<br/>CAMPO_USB · SIMULACAO · DEMONSTRACAO · try/except por ciclo<br/>vigias: batimento, disco, relógio, retenção horária, resumo de 5 min"]
+        porta["localizar_porta_arduino() · abrir_conexao_serial()<br/>ler_linhas_serial() · interpretar_linha_serial_detalhada()<br/>checksum calcular_checksum_nmea() · ContadoresProtocolo<br/>descarta a 1ª linha de dados após abrir a porta<br/>interpretar_perfil_firmware() → sensor_ar_modelo · incerteza_sensor_ar_c"]
+        calibra["calibrar_umidade_solo() — só CAMPO_USB<br/>importlib calibracao_sonda.converter_umidade_solo()<br/>valor do Arduino → umidade_solo_firmware · identidade em qualquer falha"]
+        simulador["SimuladorTempoReal.proxima_leitura()<br/>fallback automático: Modo Simulação"]
+        cenario["gerar_leitura_cenario()<br/>CENARIOS_DEMONSTRACAO: Modo Demonstração"]
+        saneador["SaneadorTempoReal.sanear()<br/>NaN · limites físicos do PERFIS_SENSOR_AR · LIMITES_SALTO · hold-last<br/>campo: semear() pela última leitura &lt; 10 min · plausibilidade física da queda do solo"]
+        qualidade["qualidade_sensores.py<br/>FiltroMedianaMovel (12 leituras; crítico passa direto)<br/>DiagnosticoSensores → EstadoSensores OK · SUSPEITO · DEFEITO"]
+        features["calcular_features()<br/>deficit_hidrico_solo · desvio_termico"]
+        subgraph LOTE["Lote: gerar_dataset_completo"]
+            direction LR
+            simserie["simular_serie_temporal()<br/>8.760 h por cultura: estações, chuva mensal,<br/>veranico, geada radiativa, escaldadura"] --> ruido["injetar_ruidos()<br/>3 % nan · pico · negativo"]
+            ruido --> detector["detectar_anomalias()"]
+            detector --> sanear_lote["sanear_dataset()"]
+            sanear_lote --> feat_df["calcular_features_dataframe()"]
+            feat_df --> realismo["gerar_relatorio_realismo()"]
+        end
+        era5[("referencia_climatica/ — ERA5-Land 2018–2021<br/>Varginha MG · São Gabriel da Palha ES (CC BY 4.0, offline)<br/>referencia_climatica.carregar_referencia()")]
+        coletor --> porta
+        coletor --> simulador
+        coletor --> cenario
+        porta --> calibra --> saneador
+        simulador --> saneador
+        cenario --> saneador
+        saneador --> qualidade --> features
+    end
+
+    subgraph C3["(3) IA / PERSISTÊNCIA"]
+        direction TB
+        processar["montar_registro_leitura() + gravar_registro_leitura()<br/>(processar_leitura = as duas)"]
+        regras["MotorRegrasCampo.avaliar() → regras_agronomicas.avaliar_status_campo()<br/>regra_temperatura = fisiologica: faixa do cliente na média de 24 h (no máximo Amarelo)<br/>GEADA_AGORA ≤ 2 °C + incerteza · CALOR_FLORADA / CALOR_SEGUIDO ≥ 34 °C · SECA_PROGRAMADA<br/>banda morta 3 % + off-delay 60 s · instantanea (v2, banca, DATASET): calcular_status_regra()"]
+        resumo["buscar_resumo_termico()<br/>média 24 h (≥ 18 h) · máxima de hoje e de ontem"]
+        predicao["predizer_status() — IA do instante<br/>só culturas do treino; demais: REGRAS<br/>regra fisiológica: temperatura neutralizada no ponto médio do ideal"]
+        pkl[("models/modelo_agroanalise.pkl<br/>RandomForestClassifier")]
+        precaucao{{"status_alerta = max(status_regra, status_predito)<br/>sensor SUSPEITO/DEFEITO: max(1, variável confiável), nunca Vermelho"}}
+        mensagem["gerar_mensagem_fisiologica() ou gerar_mensagem_orientacao()<br/>+ MENSAGEM_SENSOR_SOLO / MENSAGEM_SENSOR_AR"]
+        antecipa["prognostico.aplicar_antecipacao() — via importlib<br/>só CAMPO_USB com sensores OK e ≥ 18 das últimas 24 h<br/>P(Vermelho em 12 h) ≥ limiar (Platt local; ignorado se prognostico_suspenso)<br/>ETA de secagem ≤ 12 h · geada: Tmin prevista − q90 ≤ 2 °C + incerteza<br/>certeza falada em 2 níveis · Verde → Amarelo, nunca cria Vermelho"]
+        complemento[("models/complemento_prognostico.json<br/>climatologia mês × hora · coef_tmin e q90 por região")]
+        portao["desempenho_local.avaliar_e_decidir() — timer de hora em hora<br/>Brier 28 d × climatologia · Page-Hinkley no log-loss<br/>prognostico_suspenso · platt_local · coef_tmin_local · quantis_tmin_local"]
+        pkl_prog[("models/modelo_prognostico.pkl<br/>RandomForest + CalibratedClassifierCV isotonic")]
+        inserir["inserir_leitura(registro, configuracoes_extras=batimento)<br/>fila deque(maxlen=720) se o banco travar"]
+        banco[("data/agroanalise.db · SQLite WAL · auto_vacuum INCREMENTAL<br/>culturas · parametros_cultura · historico_leituras (+ motivo_regra, base_temperatura,<br/>temperatura_media_24h, umidade_solo_firmware) · configuracao_sistema<br/>analise_antecipacao · historico_agregado_hora<br/>v3: registro_acoes · eventos_interface · pedido_ajuda · calibracao_sonda")]
+        csvs[("data/dataset_bruto.csv<br/>data/dataset_limpo.csv")]
+        treino["treinamento_ia.main(--regra-temperatura)<br/>IA do instante: RF × LogisticRegression, 80/20 + CV 5<br/>IA de prognóstico: rótulo rotular_status_horario (fisiológico), dividir_temporal 70/30 + 12 h,<br/>limiar por orçamento · ajustar_coef_tmin_referencia + quantis_conformal_tmin por região<br/>avaliar_em_referencia() em ERA5-Land 2021 (SEÇÃO 7)"]
+        relatorios[("reports/relatorio_treinamento.txt (seções com escopo + SEÇÃO 7 dado real)<br/>matriz_confusao.png · curva_confiabilidade.png<br/>realismo_simulador.txt")]
+        retencao["aplicar_retencao() de hora em hora<br/>agrega por hora e apaga brutas &gt; 30 dias<br/>fazer_backup() · --compactar"]
+        processar --> regras --> predicao
+        resumo --> regras
+        pkl --> predicao
+        predicao --> precaucao --> mensagem --> antecipa --> inserir --> banco
+        pkl_prog --> antecipa
+        complemento --> antecipa
+        portao -- "definir_configuracao()" --> banco
+        treino -- "salvar_complemento_prognostico()" --> complemento
+        antecipa -- "gravar_analise_antecipacao()" --> banco
+        csvs --> treino
+        treino -- "salvar_modelo()" --> pkl
+        treino -- "salvar_modelo_prognostico()" --> pkl_prog
+        treino --> relatorios
+        retencao --> banco
+    end
+
+    subgraph C4["(4) FRONTEND FLASK"]
+        direction TB
+        flask["app.py · JSON pt-BR · gzip acima de 1 KB · MAX_CONTENT_LENGTH 4096<br/>GET /api/status → montar_status() (+ causa, causa_silenciada, v4: fala_curta, aparelho_da_banca) · GET /api/saude (componentes, prognostico, 503)<br/>v4: GET /static/agro.&lt;hash&gt;.css (immutable, 1 ano) · GET /api/culturas com ETag/304<br/>sem PIN, com limite por IP: POST /api/acao_feita (sem duplicata em 60 s) · /api/acao_feita/desfazer (até 120 s) · /api/pedido_ajuda · /api/evento<br/>PIN errado → 403 codigo pin_errado · bloqueio → 429 segundos_restantes<br/>com PIN X-PIN-Banca: /api/cultura · /api/demonstracao · /api/tecnico/* · /api/banca/florada · /api/banca/seca_programada · /api/calibracao/*"]
+        acoes["acoes_orientacao.derivar_acoes() + derivar_causa()<br/>até 3 pictogramas = as ordens faladas (acoes_faladas, acoes_cobrem_mensagem) · causa TERRA_SECA · ENCHARCADO · FRIO_GEADA · CALOR · APARELHO<br/>v4: montar_fala_curta() — cor + ação na 2ª frase + causa, ≤ 15 palavras, sem números"]
+        retorno["retorno_agricultor.py<br/>registrar_acao_sem_repetir · desfazer_acao · causa_silenciada 60 min · registrar_pedido_ajuda (link wa.me)<br/>montar_resumo_tecnico (7 dias, sem a demonstração)"]
+        calib_mod["calibracao_sonda.py<br/>capturar_ponto · concluir_dois_pontos · aferir_um_ponto"]
+        tecnico["tecnico.html — /tecnico (PIN)<br/>resumo de 7 dias · copiar para WhatsApp · calibrar a sonda (retorno junto do botão)<br/>v4: Calendário do café — seca programada e florada com confirmação"]
+        pin["seguranca_banca.py<br/>PBKDF2-SHA256 · LimitadorTentativas 5 erros/60 s"]
+        pagina["index.html + agricultor.css (sem CDN; GET / ≤ 15.000 B gzip, CSS crítico inline)<br/>semáforo deitado ≥ 72 px · data-estado neutro (teste, demonstração de fora) · data-confianca (antiga, sem-ligacao, erro-servidor…)<br/>título + desenho da causa · pictogramas que falam ao toque · ? contextual · Feito com Desfazer 15 s · Chamar o técnico<br/>&lt;dialog&gt; modal · #anunciador único · estado embutido · consulta adaptativa 5 s → 60 s"]
+        voz["Web Speech API pt-BR<br/>1º toque fala_curta · 2º mensagem completa · 3º mais devagar (0,8; 0,85 lembrada)<br/>avisos e diálogos sempre falados · sem voz pt → bipes Web Audio 1/2/3<br/>repete o Vermelho a cada 600 s (nunca com teste ou demonstração)"]
+        banca["Área da banca recolhida (?banca=1 ou toque longo de 2 s)<br/>só cenários de demonstração · Voltar ao normal · link para /tecnico<br/>troca de cultura com confirmação falada"]
+        flask --> pagina --> voz
+        acoes --> flask
+        pin --> flask
+        retorno --> flask
+        calib_mod --> flask
+        tecnico -- "GET /api/tecnico/resumo com X-PIN-Banca" --> flask
+        pagina --> banca
+        banca -- "POST com X-PIN-Banca" --> flask
+    end
+
+    subgraph OPS["OPERAÇÃO 24/7"]
+        direction LR
+        systemd["agroanalise-coletor · agroanalise-web · agroanalise-alarme (.service)<br/>agroanalise-desempenho.service + .timer (de hora em hora, Persistent=true)<br/>Restart=always · RestartSec=5 · SupplementaryGroups=dialout<br/>instalar.sh (glob deploy/agroanalise-*) · iniciar_windows.bat"]
+        alarme["alarme_local.executar()<br/>bipes na estação base: transição para Vermelho · geada das 17–20 h<br/>v4: só leitura CAMPO_USB toca (nunca Simulação nem Demonstração)<br/>silêncio 21:30–05:00 (geada fura) · Feito silencia · no máximo 3 toques em 10 min"]
+        servidor["servidor.py — waitress (8 threads)<br/>AGRO_HOST · AGRO_PORTA · AGRO_BANCO"]
+        logs["registro.configurar_logs()<br/>logs/coletor.log · logs/web.log · 5 × 5 MB + journald"]
+        systemd --> servidor
+        systemd --> logs
+        systemd --> alarme
+    end
+
+    subgraph UX["VALIDAÇÃO UX PERMANENTE (v4)"]
+        direction LR
+        suite["scripts/validar_ux.sh · 70 metas (tests/e2e/validacao/metas_v4.json)<br/>servidor_estados.py: 26 estados forçados num banco temporário<br/>axe-core · Lighthouse · contraste próprio · oclusão · pixels das lâmpadas · regiões vivas · bytes<br/>coerencia.py · legibilidade.py → reports/ux4/&lt;data&gt;/resultado.json"]
+    end
+    suite -. "Chromium (Playwright)" .-> pagina
+    suite -. "importa app.app e montar_status" .-> flask
+
+    fw_envio --> usb --> porta
+    fw_diag --> usb
+    features --> processar
+    feat_df --> csvs
+    banco -- "buscar_historico() ordem id_leitura · obter_analise_antecipacao()" --> flask
+    flask -- "definir_configuracao() · injetar_leitura_cenario()" --> banco
+    coletor -- "configurações a cada ciclo · batimento na mesma transação" --> banco
+    servidor --> flask
+    systemd --> coletor
+    systemd --> portao
+    alarme -- "ler_situacao(): buscar_historico() · causa_silenciada()" --> banco
+    era5 --> treino
+    banco -- "buscar_resumo_termico() · buscar_ultima_leitura_origem()" --> resumo
+    calib_mod -- "calibracao_sonda (tabela)" --> banco
+    banco -- "converter_umidade_solo() lê a calibração ativa" --> calibra
+    tecnico_pessoa(["Técnico de ATER<br/>WhatsApp no celular"])
+    tecnico_pessoa --> tecnico
+    pagina -- "link wa.me aberto pelo celular" --> tecnico_pessoa
+    voz --> agricultor
+    pagina --> agricultor
+    alarme --> agricultor
+    agricultor -- "toca a voz, um pictograma ou ? · Feito · Chamar o técnico · confirma troca de cultura" --> pagina
+
+    classDef hardware fill:#fff3e0,stroke:#e65100,color:#3e2723
+    classDef dados fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    classDef ia fill:#ede7f6,stroke:#4527a0,color:#311b92
+    classDef web fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    classDef ops fill:#eceff1,stroke:#455a64,color:#263238
+    class dht,hig,fw_media,fw_envio,fw_diag,wdt,solo_ar hardware
+    class coletor,porta,calibra,simulador,cenario,saneador,qualidade,features,simserie,ruido,detector,sanear_lote,feat_df,realismo,era5 dados
+    class processar,regras,resumo,predicao,precaucao,mensagem,antecipa,inserir,treino,retencao,portao ia
+    class flask,acoes,pin,pagina,voz,banca,retorno,calib_mod,tecnico web
+    class systemd,servidor,logs,alarme,suite ops

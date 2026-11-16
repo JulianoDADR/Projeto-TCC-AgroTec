@@ -1,0 +1,14 @@
+# AgroAnálise — agenda de hora em hora do portão de segurança local (agroanalise-desempenho.service).
+# Persistent=true: se o computador ficou desligado na hora marcada, roda assim que ligar.
+#   systemctl list-timers agroanalise-desempenho.timer
+[Unit]
+Description=AgroAnalise - avaliacao local do prognostico de hora em hora
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=300
+Persistent=true
+Unit=agroanalise-desempenho.service
+
+[Install]
+WantedBy=timers.target

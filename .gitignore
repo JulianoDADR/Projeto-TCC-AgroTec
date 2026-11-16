@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+data/
+models/
+reports/
+*.log
+.venv/
+
+# AgroAnálise — confiabilidade 24/7
+logs/
+*.log.*
+
+# Node (suíte de validação UX da v4)
+node_modules/
+tests/e2e/vendor/

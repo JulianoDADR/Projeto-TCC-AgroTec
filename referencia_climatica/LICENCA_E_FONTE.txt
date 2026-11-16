@@ -1,0 +1,40 @@
+AgroAnálise — referência climática REAL e offline (reanálise ERA5-Land)
+=======================================================================
+
+Arquivos
+--------
+era5land_varginha_mg_2018_2021.csv.gz
+    Ponto de grade ERA5-Land lat −21,6 / lon −45,4 (Varginha/MG, Sul de Minas) — referência do Café Arábica.
+era5land_sao_gabriel_da_palha_es_2018_2021.csv.gz
+    Ponto de grade ERA5-Land lat −19,0 / lon −40,5 (São Gabriel da Palha/ES) — referência do Café Conilon.
+
+Período: 2018-01-01 00:00 a 2021-12-31 23:00 UTC, horário (35.064 horas por arquivo).
+Colunas: utc (ISO 8601 com +00:00), temperature_2m (°C), dew_point_2m (°C),
+soil_moisture_0_to_7cm e soil_moisture_7_to_28cm (m³/m³, umidade volumétrica do modelo de superfície).
+O módulo src/referencia_climatica.py converte para hora local America/Sao_Paulo (sem fuso) e calcula a
+umidade relativa pela fórmula de Magnus (limitada a 0–100 %).
+
+Fonte e licença
+---------------
+Weather data by Open-Meteo.com; Copernicus ERA5-Land, CC BY 4.0.
+  - Dados: Copernicus Climate Change Service (C3S) / ECMWF, ERA5-Land hourly (Muñoz-Sabater et al.),
+    redistribuídos pela Open-Meteo no AWS Open Data:
+    https://openmeteo.s3.amazonaws.com/data/copernicus_era5_land/<variavel>/year_<ano>.om
+  - Registro: https://registry.opendata.aws/open-meteo/
+  - Documentação: https://github.com/open-meteo/open-data
+  - Licença: Creative Commons Attribution 4.0 International (CC BY 4.0),
+    https://creativecommons.org/licenses/by/4.0/ — a atribuição acima deve acompanhar qualquer cópia.
+Extração: scripts/baixar_referencia_era5land.py (pacotes em requirements-referencia.txt), leitura parcial
+por HTTP Range dos arquivos .om (cerca de 5 MB transferidos para os dois pontos). Baixado em 2026-11-14.
+
+Ressalvas (leia antes de usar os números)
+-----------------------------------------
+1. GEADA RADIATIVA SUAVIZADA: a reanálise tem ~11 km de resolução. Em noites de céu limpo e vento calmo, o
+   ar frio escorre para os fundos de vale e a temperatura no talhão fica bem abaixo da média da célula de
+   grade. A mínima do ERA5-Land é, portanto, mais QUENTE que a do abrigo no talhão justamente nas noites de
+   geada — a referência serve para medir viés e erro dos métodos (climatologia, persistência, coeficientes
+   da mínima), não para contar geadas de um sítio.
+2. A umidade do solo é a do MODELO (m³/m³, 0–7 cm), outra grandeza que a do higrômetro resistivo (%).
+   Por isso a avaliação em dado real fixa o solo no meio da faixa ideal e o rótulo fica só térmico.
+3. Não há ruído de sensor (o DHT11 tem ±2 °C) nem falhas de comunicação.
+4. Nas viradas do horário de verão de 2018 e 2019 a hora local tem uma hora repetida ou pulada.

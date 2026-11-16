@@ -1,0 +1,70 @@
+---
+title: AgroAnálise v4 — Máquina de estados dos modos operantes (ColetorAgroAnalise)
+---
+stateDiagram-v2
+    direction TB
+
+    state "CAMPO_USB<br/>lê o Arduino real · origem CAMPO_USB<br/>calibração da sonda no host + mediana móvel + diagnóstico de sensores<br/>regra fisiológica com banda morta + antecipação" as CAMPO_USB
+    state "SIMULACAO<br/>fallback · SimuladorTempoReal · origem SIMULACAO<br/>regra fisiológica com banda morta" as SIMULACAO
+    state "DEMONSTRACAO<br/>banca · gerar_leitura_cenario · origem DEMONSTRACAO<br/>sempre a regra instantânea (cenários didáticos)" as DEMONSTRACAO
+    state fim_da_demonstracao <<choice>>
+    state tentativa_conexao <<choice>>
+
+    [*] --> SIMULACAO : executar() → _preparar() inicializa o banco, migra o esquema, semeia as configurações v2 e v3 (regra_temperatura=fisiologica), cria o MotorRegrasCampo, grava estado_hardware=DESCONECTADO e modo_operacao=SIMULACAO (mantém DEMONSTRACAO já gravada)
+
+    SIMULACAO --> tentativa_conexao : [forcar_simulacao falso e monotonic ≥ próxima tentativa] _tentar_conectar()
+    tentativa_conexao --> CAMPO_USB : porta achada e aberta / CONECTADO + CAMPO_USB, saneador de campo semeado pela última leitura CAMPO_USB com menos de 10 min, 1ª linha de dados marcada para descarte
+    tentativa_conexao --> SIMULACAO : nenhuma porta ou SerialException, OSError, ValueError / _agendar_reconexao() + intervalo_reconexao_segundos (15 s)
+    SIMULACAO --> SIMULACAO : ciclo normal / _ciclo_simulacao() → leitura sintética
+
+    CAMPO_USB --> CAMPO_USB : _ciclo_campo() · linha de dados v1 ou v2 com checksum válido, inclusive nan,nan,solo, grava e zera o contador · banner PRONTO descarta a próxima linha · linha PERFIL grava sensor_ar_modelo e incerteza · ciclo sem dados com contador menor que 3 → só aviso no log
+    CAMPO_USB --> SIMULACAO : SerialException em ler_linhas_serial(), ou 3 ciclos seguidos sem linha de dados aproveitável (só #ERRO, checksum inválido, v1 com exigir_protocolo_v2) / _desconectar() fecha a porta, grava DESCONECTADO e SIMULACAO, leitura simulada no mesmo ciclo
+
+    CAMPO_USB --> DEMONSTRACAO : [modo_operacao = DEMONSTRACAO, cenário válido e agora menor que demonstracao_expira_em, com ou sem fuso] gravado por POST /api/demonstracao
+    SIMULACAO --> DEMONSTRACAO : [mesma guarda] gravado por POST /api/demonstracao
+
+    DEMONSTRACAO --> DEMONSTRACAO : _ciclo_demonstracao() · drena a serial · cenário novo recria o saneador · falha na serial só grava DESCONECTADO
+    DEMONSTRACAO --> fim_da_demonstracao : [tempo expirou, cenário inválido ou expiração inválida] encerrar_demonstracao_se_inalterada() = True, ou [modo_operacao ≠ DEMONSTRACAO] encerrada pelo aplicativo
+    fim_da_demonstracao --> CAMPO_USB : [conectado = porta serial aberta]
+    fim_da_demonstracao --> SIMULACAO : [não conectado]
+
+    CAMPO_USB --> [*] : Ctrl+C, SIGTERM (systemd), parar() ou max_iteracoes / encerrar() grava a fila pendente, fecha a serial, grava DESCONECTADO e troca CAMPO_USB por SIMULACAO
+    SIMULACAO --> [*] : Ctrl+C, SIGTERM, parar() ou max_iteracoes / encerrar()
+    DEMONSTRACAO --> [*] : Ctrl+C, SIGTERM, parar() ou max_iteracoes / encerrar()
+
+    note right of SIMULACAO
+        --simular (forcar_simulacao=True) nunca tenta conectar.
+        Em TODOS os estados, a cada ciclo, o coletor também:
+        roda as vigias (_vigias_do_ciclo): salto de relógio maior
+        que 60 s, disco abaixo de espaco_minimo_mb (retenção de
+        emergência de 7 dias), retenção horária, resumo de 5 min;
+        relê configuracao_sistema, troca a cultura se mudou,
+        recarrega o .pkl se o mtime mudou, grava a fila pendente
+        antes da leitura nova e grava o batimento
+        (coletor_batimento_em, pid, disco, contadores serial).
+        v3: _atualizar_configuracoes() recarrega a ConfiguracaoTermica
+        (regra_temperatura, florada, seca programada, banda morta).
+        v4: dado de SIMULACAO aparece neutro na tela (semáforo
+        apagado, Dados de teste) e o alarme da estação não toca.
+    end note
+
+    note left of DEMONSTRACAO
+        v4: só o aparelho que ligou a demonstração a vê
+        com as cores do cenário; nos outros celulares a
+        página fica neutra (semáforo apagado, sem alarme).
+        O Flask também encerra a demonstração vencida
+        em GET /api/status e GET /api/cenarios
+        (_encerrar_demonstracao_vencida), com o mesmo
+        encerramento atômico em BEGIN IMMEDIATE.
+        Com PIN definido, só o técnico inicia a banca.
+    end note
+
+    note left of CAMPO_USB
+        Sensor SUSPEITO ou DEFEITO (DiagnosticoSensores):
+        cor = max(1, variável confiável), nunca Vermelho
+        por causa do sensor, e a voz pede para conferir.
+        systemd reinicia o processo em 5 s se ele morrer.
+        v3: a banda morta guarda um estado por (cultura, origem),
+        semeado pela última leitura gravada e zerado na troca
+        de cultura; piorar é imediato, melhorar espera 60 s.
+    end note

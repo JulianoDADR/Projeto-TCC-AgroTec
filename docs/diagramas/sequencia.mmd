@@ -1,0 +1,173 @@
+---
+title: AgroAnálise v4 — Sequência ponta a ponta (do solo à voz, com regra fisiológica, antecipação, fala curta e retorno do agricultor)
+---
+sequenceDiagram
+    autonumber
+    actor Agricultor
+    actor Tecnico as Técnico de ATER
+    participant Navegador as Navegador (index.html)
+    participant Flask as Flask (app.py via servidor.py)
+    participant SQLite as SQLite (agroanalise.db)
+    participant Alarme as alarme_local.py (estação base)
+    participant Coletor as Coletor (ColetorAgroAnalise)
+    participant Regras as regras_agronomicas.py (MotorRegrasCampo)
+    participant Qualidade as Saneador + qualidade_sensores
+    participant IA as IA do instante (modelo_agroanalise.pkl)
+    participant Prog as prognostico.py (modelo_prognostico.pkl)
+    participant Arduino as Arduino (coleta_sensores.ino)
+
+    Note over Coletor,SQLite: systemd → python src/coletor_serial.py → _preparar(): inicializar_banco() + migrar_esquema() + semear_configuracoes_v3() (regra_temperatura=fisiologica por INSERT OR IGNORE), carregar_modelo(), carregar_modulo_antecipacao('prognostico'), MotorRegrasCampo.do_banco()
+    Arduino-->>Coletor: banner #AGROANALISE_PRONTO (PROTOCOLO=2) e linha de perfil #AGROANALISE_PERFIL (AR=DHT11, SOLO=RESISTIVO, PULSO=0)
+    Coletor->>SQLite: interpretar_perfil_firmware() → sensor_ar_modelo e incerteza_sensor_ar_c (limiar de geada e limites físicos)
+
+    loop a cada 2000 ms (millis, watchdog de 8 s)
+        Arduino->>Arduino: média móvel do higrômetro (pulso de 20 ms na sonda, se configurado) e dht.read()
+        alt DHT11 devolveu NaN
+            Arduino-->>Coletor: #ERRO:DHT11_LEITURA_INVALIDA e $2,nan,nan,72.4*XX
+        else leitura válida
+            Arduino-->>Coletor: $2,21.0,65.0,72.4*XX (XOR) + pisca LED
+        end
+    end
+
+    loop a cada intervalo_coleta_segundos (5 s) — ciclo protegido por try/except
+        Coletor->>Coletor: _vigias_do_ciclo(): relógio, disco, retenção horária
+        Coletor->>SQLite: obter_todas_configuracoes()
+        alt modo DEMONSTRACAO válido
+            Coletor->>Coletor: gerar_leitura_cenario(), origem DEMONSTRACAO
+        else Arduino conectado (CAMPO_USB)
+            Coletor->>Arduino: ler_linhas_serial() drena o buffer
+            Arduino-->>Coletor: interpretar_linha_serial_detalhada(): checksum, v1/v2, diagnóstico
+            Coletor->>Qualidade: DiagnosticoSensores.avaliar() → EstadoSensores
+            alt 3 ciclos sem linha de dados aproveitável ou SerialException
+                Coletor->>SQLite: DESCONECTADO + SIMULACAO
+                Coletor->>Coletor: SimuladorTempoReal no mesmo ciclo
+            end
+        else SIMULACAO
+            Coletor->>Coletor: SimuladorTempoReal.proxima_leitura() · reconexão a cada 15 s
+        end
+
+        opt origem CAMPO_USB
+            Coletor->>SQLite: calibrar_umidade_solo() → calibracao_sonda.converter_umidade_solo() (calibração ativa, cache de 60 s)
+            Note right of Coletor: valor do Arduino guardado em umidade_solo_firmware, sem calibração = identidade
+        end
+        Coletor->>Qualidade: sanear() (NaN, limites do perfil do sensor, salto, queda física do solo)
+        Coletor->>Qualidade: FiltroMedianaMovel.filtrar() (crítico passa direto)
+        Coletor->>Coletor: calcular_features()
+        alt regra_temperatura = fisiologica e origem CAMPO_USB ou SIMULACAO
+            Coletor->>Regras: MotorRegrasCampo.avaliar(temperatura, solo, parametros, origem)
+            Regras->>SQLite: buscar_resumo_termico(): média 24 h (≥ 18 h), máxima de hoje e de ontem
+            Regras->>Regras: avaliar_status_campo(): conforto na média 24 h (≤ Amarelo), GEADA_AGORA ≤ 2 + incerteza, CALOR ≥ 34 °C na florada ou 2º dia, SECA_PROGRAMADA
+            Regras->>Regras: banda morta 3 % + off-delay 60 s só para melhorar (geada e calor nunca esperam)
+            Regras-->>Coletor: AvaliacaoRegra(status, motivo_regra, base_temperatura, temperatura_referencia)
+            Coletor->>IA: predizer_status() com a temperatura no ponto médio do ideal
+        else instantanea (v2), DEMONSTRACAO ou DATASET
+            Coletor->>Coletor: calcular_status_regra() (leitura instantânea)
+            Coletor->>IA: predizer_status(..., codigo_cultura)
+        end
+        IA-->>Coletor: (status_predito, probabilidade, versao) ou REGRAS
+        alt sensor OK
+            Coletor->>Coletor: status_alerta = max(regra, IA) + gerar_mensagem_fisiologica() ou gerar_mensagem_orientacao()
+        else sensor SUSPEITO/DEFEITO
+            Coletor->>Coletor: max(1, variável confiável) + MENSAGEM_SENSOR_SOLO/AR
+        end
+        opt origem CAMPO_USB e sensores OK
+            Coletor->>Prog: aplicar_antecipacao(registro, parametros, banco)
+            Prog->>SQLite: buscar_serie_horaria() SELECT AVG por hora (24 h, só CAMPO_USB sem anomalia)
+            alt menos de 18 das últimas 24 h com dados, ou qualquer erro
+                Prog-->>Coletor: (registro, None) sem mudança
+            else histórico suficiente
+                Prog->>SQLite: prognostico_suspenso, platt_local, coef_tmin_local, quantis_tmin_local, limiar de geada
+                Prog->>Prog: P(Vermelho em 12 h) (ignorada se suspenso), ETA de secagem, Tmin da madrugada − q90 ≤ 2 °C + incerteza
+                Prog->>Prog: certeza falada: É quase certo que (p ≥ 0,8) ou Pode ser que
+                Prog-->>Coletor: registro com status ≤ max(atual, 1) e frase de motivo e prazo
+            end
+        end
+        Coletor->>SQLite: inserir_leitura(registro, configuracoes_extras=batimento) numa transação
+        alt sqlite3.OperationalError (banco travado)
+            Coletor->>Coletor: fila deque(maxlen=720), gravada em lote no ciclo seguinte
+        else gravado
+            Coletor->>SQLite: gravar_analise_antecipacao(id_leitura) se houve resultado
+        end
+    end
+
+    loop alarme_local.executar() a cada 30 s
+        Alarme->>SQLite: ler_situacao(): buscar_historico(limite=1), obter_analise_antecipacao(), causa_silenciada()
+        alt transição para Vermelho (só CAMPO_USB na v4) ou GEADA_NOITE entre 17 h e 19:59, fora do silêncio 21:30–05:00 (Vermelho de GEADA_AGORA toca mesmo no silêncio)
+            Alarme->>Agricultor: bipes pelo alto-falante da estação base (no máximo 3 em 10 min)
+        end
+    end
+
+    Note over SQLite: timer agroanalise-desempenho (de hora em hora): desempenho_local.avaliar_e_decidir() compara o Brier de 28 dias com a climatologia, roda o Page-Hinkley e grava prognostico_suspenso, platt_local e coef_tmin_local
+
+    Agricultor->>Navegador: abre a página no celular
+    Navegador->>Flask: GET / (Accept-Encoding gzip)
+    Flask->>SQLite: montar_status() para o estado embutido
+    Flask-->>Navegador: HTML comprimido (≤ 15.000 B) com CSS crítico e script estado-inicial (semáforo pinta antes do 1º fetch)
+    Navegador->>Flask: GET /static/agro.HASH.css (só na 1ª visita, depois vem do cache, immutable)
+    loop consulta adaptativa: 5 s visível, pausa oculta, recuo até 60 s sem rede
+        Navegador->>Flask: GET /api/status (cache no-store)
+        Flask->>SQLite: buscar_historico() em ordem de id_leitura, configurações, obter_analise_antecipacao()
+        Flask->>Flask: histerese · relógio · coletor parado · simulação · sensor · derivar_causa() · derivar_acoes() coerentes com a voz · causa_silenciada()
+        Flask->>Flask: montar_fala_curta(): Sinal + cor + ação + causa, ≤ 15 palavras, sem números
+        Flask-->>Navegador: JSON com cor, titulo, causa, mensagem_voz, fala_curta, acoes, aparelho_da_banca...
+        alt dados_simulados ou demonstração vista de outro aparelho
+            Navegador->>Navegador: data-estado neutro: semáforo apagado, aviso de teste, sem repetição nem vibração
+        else leitura antiga, relógio errado ou sem ligação
+            Navegador->>Navegador: última cor dessaturada + borda tracejada + relógio, aria-label com notícia antiga
+        else viva
+            Navegador->>Navegador: acende a lâmpada, desenha a causa e até 3 pictogramas tocáveis e guarda em agro_ultimo_status
+        end
+        Navegador->>Navegador: definirTexto() só escreve o que mudou, o anunciador só fala quando a chave do anúncio muda
+    end
+    Agricultor->>Navegador: toca o botão de voz
+    alt existe voz pt-BR
+        Navegador->>Agricultor: 1º toque fala_curta · 2º toque (até 120 s) mensagem completa · 3º fala_curta a 0,8
+    else sem voz em português
+        Navegador->>Agricultor: aviso grande + bipes Web Audio (1 verde, 2 amarelo, 3 vermelho)
+    end
+    Note over Navegador,Agricultor: Vermelho visível repete fala ou bipes a cada 600 s, com vibração, salvo se a causa foi silenciada por Feito
+    opt Agricultor toca um pictograma, a causa ou ?
+        Navegador->>Agricultor: fala a descrição da ação, a dica sensorial da causa ou a ajuda
+    end
+    opt Agricultor toca Feito
+        Navegador->>Flask: POST /api/acao_feita {codigo_acao, causa, id_leitura} (sem PIN, 10 por minuto por IP)
+        Flask->>SQLite: registrar_acao_sem_repetir() (mesmo toque em < 60 s → 200 repetido)
+        Flask-->>Navegador: 201 com a fala Anotado: você regou às 17 horas. Se não fez, toque de novo para desfazer.
+        Note over Navegador: o botão vira Desfazer por 15 s, depois Feito às HH:MM (aria-disabled). Sem rede, guarda em agro_feitos e reenvia
+        opt toca Desfazer
+            Navegador->>Flask: POST /api/acao_feita/desfazer {id_acao}
+            Flask->>SQLite: desfazer_acao() apaga a linha (até 120 s, depois 409)
+            Flask-->>Navegador: 200 e a fala Pronto, desfeito.
+        end
+    end
+    opt Agricultor toca Chamar o técnico
+        Navegador->>Flask: POST /api/pedido_ajuda
+        Flask->>SQLite: registrar_pedido_ajuda() com cor, causa e leituras
+        Flask-->>Navegador: link https://wa.me/numero?text=resumo (ou vazio sem número)
+        Navegador->>Tecnico: WhatsApp do celular envia quando houver sinal
+    end
+    opt Técnico abre /tecnico
+        Tecnico->>Flask: GET /api/tecnico/resumo?dias=7 com X-PIN-Banca
+        Flask->>SQLite: montar_resumo_tecnico(): horas por cor e causa, avisos confirmados, Feito, sensor, prognóstico
+        Flask-->>Tecnico: JSON + texto_whatsapp (≤ 700 caracteres)
+        Tecnico->>Flask: POST /api/calibracao/aferir {valor_referencia_pct} com PIN
+        Flask->>SQLite: aferir_um_ponto() grava calibracao_sonda (UM_PONTO_CAMPO)
+    end
+    opt rede caiu
+        Navegador->>Agricultor: cor salva + borda tracejada + relógio + Última notícia de hoje às HH:MM — sem ligação agora
+    end
+    opt servidor respondeu 5xx
+        Navegador->>Agricultor: Programa com problema (nunca Sem ligação nem ✓) + ação Aparelho
+    end
+
+    opt Área da banca (?banca=1 ou toque longo de 2 s)
+        Agricultor->>Navegador: escolhe Seca Extrema
+        Navegador->>Flask: POST /api/demonstracao com X-PIN-Banca
+        alt PIN definido e ausente ou errado
+            Flask-->>Navegador: 403 codigo pin_necessario ou pin_errado (diálogo continua aberto, erro em linha) · 5 erros do mesmo IP → 429 segundos_restantes
+        else autorizado
+            Flask->>SQLite: expiração UTC → cenário → modo DEMONSTRACAO
+            Flask->>SQLite: injetar_leitura_cenario() grava na hora
+            Flask-->>Navegador: JSON com status 2 (vermelho)
+        end
+    end

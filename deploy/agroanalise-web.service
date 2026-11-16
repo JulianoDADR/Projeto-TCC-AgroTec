@@ -1,0 +1,29 @@
+# AgroAnálise — servidor web (waitress) do Companheiro Virtual (semáforo + voz).
+# Instalado por deploy/instalar.sh em /etc/systemd/system/ (o instalador troca
+# /opt/agroanalise pela pasta real da instalação).
+#   systemctl status agroanalise-web
+#   journalctl -u agroanalise-web -f
+[Unit]
+Description=AgroAnalise - servidor web do Companheiro Virtual (porta 5000)
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=agroanalise
+Group=agroanalise
+SupplementaryGroups=dialout
+WorkingDirectory=/opt/agroanalise
+Environment=PYTHONUNBUFFERED=1
+Environment=AGRO_HOST=0.0.0.0
+Environment=AGRO_PORTA=5000
+# Via /bin/sh + exec: o shell é substituído pelo Python (os sinais do systemd chegam
+# direto ao processo) e a unidade passa no "systemd-analyze verify" mesmo antes
+# de o ambiente virtual existir (ex.: na integração contínua).
+ExecStart=/bin/sh -c 'exec /opt/agroanalise/.venv/bin/python /opt/agroanalise/src/servidor.py'
+TimeoutStopSec=20
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

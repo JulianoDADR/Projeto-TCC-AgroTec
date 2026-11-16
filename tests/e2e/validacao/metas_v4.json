@@ -1,0 +1,89 @@
+{
+ "versao": "v4",
+ "descricao": "Limiares das metas mensuráveis da v4 do AgroAnálise (UX do agricultor e do técnico). Cada meta compara um indicador calculado por tests/e2e/validacao/matriz_estados.js (comparar) a partir de medidas_node.json, coerencia.json e legibilidade.json. baseline_v3 = valor medido na v3 (commit 5c66abe) com scripts/validar_ux.sh --linha-de-base --projeto <checkout da v3> (reports/ux4/linha_de_base_v3). Metas com 'ferramenta' ficam PULADAS se a ferramenta faltar (falham com AGRO_UX_ESTRITO=1). Meta com 'relativo_a_v3' compara valor ÷ baseline_v3.",
+ "metas": [
+  {"id": "1.axe_raiz_estados", "item": 1, "indicador": "axe.raiz_estados", "operador": ">=", "limiar": 24, "baseline_v3": 26, "ferramenta": "axe-core", "descricao": "axe-core 4.14 rodado em ≥ 24 estados de / (× 360×740 e 1280×800)"},
+  {"id": "1.axe_raiz_violacoes", "item": 1, "indicador": "axe.raiz_violacoes", "operador": "<=", "limiar": 0, "baseline_v3": 0, "ferramenta": "axe-core", "descricao": "0 violações (wcag2a, wcag2aa, wcag21aa, wcag22aa, best-practice) em / × 2 viewports"},
+  {"id": "1.axe_tecnico_violacoes", "item": 1, "indicador": "axe.tecnico_violacoes", "operador": "<=", "limiar": 0, "baseline_v3": 0, "ferramenta": "axe-core", "descricao": "0 violações em /tecnico com e sem o assistente aberto"},
+  {"id": "1.axe_incompletos_cobertos", "item": 1, "indicador": "axe.incompletos_contraste_cobertos_pct", "operador": ">=", "limiar": 100, "baseline_v3": 100, "ferramenta": "axe-core", "descricao": "Os 'incompletos' de color-contrast do axe ficam cobertos pela medição própria de contraste"},
+  {"id": "1.lh_raiz_a11y", "item": 1, "indicador": "lighthouse.raiz_acessibilidade", "operador": ">=", "limiar": 100, "baseline_v3": 100, "ferramenta": "lighthouse", "descricao": "Lighthouse mobile (CPU 4×, mediana de 3): / com Acessibilidade 100"},
+  {"id": "1.lh_raiz_bp", "item": 1, "indicador": "lighthouse.raiz_boas_praticas", "operador": ">=", "limiar": 100, "baseline_v3": 100, "ferramenta": "lighthouse", "descricao": "Lighthouse: / com Boas práticas 100"},
+  {"id": "1.lh_raiz_perf", "item": 1, "indicador": "lighthouse.raiz_desempenho", "operador": ">=", "limiar": 95, "baseline_v3": 100, "ferramenta": "lighthouse", "descricao": "Lighthouse: / com Desempenho ≥ 95"},
+  {"id": "1.lh_raiz_cls", "item": 1, "indicador": "lighthouse.raiz_cls", "operador": "<=", "limiar": 0.05, "baseline_v3": 0, "ferramenta": "lighthouse", "descricao": "Lighthouse: / com CLS ≤ 0,05"},
+  {"id": "1.lh_raiz_lcp", "item": 1, "indicador": "lighthouse.raiz_lcp_ms", "operador": "<=", "limiar": 1200, "baseline_v3": 823, "ferramenta": "lighthouse", "descricao": "Lighthouse: / com LCP ≤ 1,2 s"},
+  {"id": "1.lh_tecnico_a11y", "item": 1, "indicador": "lighthouse.tecnico_acessibilidade", "operador": ">=", "limiar": 100, "baseline_v3": 100, "ferramenta": "lighthouse", "descricao": "Lighthouse: /tecnico com Acessibilidade 100"},
+  {"id": "1.lh_tecnico_perf", "item": 1, "indicador": "lighthouse.tecnico_desempenho", "operador": ">=", "limiar": 95, "baseline_v3": 100, "ferramenta": "lighthouse", "descricao": "Lighthouse: /tecnico com Desempenho ≥ 95"},
+
+  {"id": "2.contraste_textos", "item": 2, "indicador": "contraste.textos_abaixo", "operador": "<=", "limiar": 0, "baseline_v3": 5, "descricao": "0 textos abaixo de 4,5:1 (3:1 se grandes) em todos os estados e viewports, com opacidade dos ancestrais e pior parada do gradiente (inclui antigo, sem ligação e simulado)"},
+  {"id": "2.contraste_icones", "item": 2, "indicador": "contraste.icones_controle_abaixo", "operador": "<=", "limiar": 0, "baseline_v3": 6, "descricao": "0 ícones de controle abaixo de 3:1"},
+  {"id": "2.contraste_tecnico", "item": 2, "indicador": "contraste.tecnico_abaixo", "operador": "<=", "limiar": 0, "baseline_v3": 0, "descricao": "0 textos e ícones de controle abaixo do mínimo em /tecnico"},
+  {"id": "2.primeira_tela_razao", "item": 2, "indicador": "contraste.primeira_tela_min_razao", "operador": ">=", "limiar": 7, "baseline_v3": 5.57, "descricao": "Primeira tela dos estados vivos (360×740): todo texto ≥ 7:1"},
+  {"id": "2.primeira_tela_fonte", "item": 2, "indicador": "contraste.primeira_tela_min_fonte_px", "operador": ">=", "limiar": 16, "baseline_v3": 14, "descricao": "Primeira tela dos estados vivos (360×740): todo texto ≥ 16 px"},
+
+  {"id": "3.oclusao", "item": 3, "indicador": "oclusao.casos_com_sobreposicao", "operador": "<=", "limiar": 0, "baseline_v3": 118, "descricao": "0 px de sobreposição de #barra-voz com #acoes, #feito ou #tecnico em todos os estados × 5 celulares (inclui troca de cultura e sem voz pt-BR)"},
+  {"id": "3.foco_obscurecido", "item": 3, "indicador": "foco.obscurecidos_max", "operador": "<=", "limiar": 0, "baseline_v3": 7, "descricao": "0 elementos com foco sob a barra depois de 25 Tabs (pior estado)"},
+
+  {"id": "4.lampada_72px", "item": 4, "indicador": "semaforo.lampada_min_px", "operador": ">=", "limiar": 72, "baseline_v3": 55.6, "descricao": "Lâmpada ≥ 72 px em todos os celulares e estados"},
+  {"id": "4.vermelho_maior_que_verde", "item": 4, "indicador": "semaforo.vermelho_menos_verde_px", "operador": ">=", "limiar": 0, "baseline_v3": -17.7, "descricao": "Lâmpada no vermelho ≥ que no verde em cada celular"},
+  {"id": "4.orientacao_unica", "item": 4, "indicador": "semaforo.orientacoes_celular", "operador": "<=", "limiar": 1, "baseline_v3": 2, "descricao": "Mesma orientação do semáforo em todos os celulares em pé"},
+  {"id": "4.razao_vivos", "item": 4, "indicador": "semaforo.razao_min_vivos", "operador": ">=", "limiar": 4.5, "baseline_v3": 3.92, "descricao": "Lâmpada acesa ÷ maior apagada ≥ 4,5 nos estados vivos (v3: vermelho 4,05 na auditoria)"},
+  {"id": "4.razao_esmaecidos", "item": 4, "indicador": "semaforo.razao_min_esmaecidos", "operador": ">=", "limiar": 4.5, "baseline_v3": 3.06, "descricao": "Lâmpada acesa ÷ maior apagada ≥ 4,5 nos estados esmaecidos (v3: vermelho 3,20 na auditoria)"},
+  {"id": "4.razao_ofuscamento", "item": 4, "indicador": "semaforo.razao_min_ofuscamento", "operador": ">=", "limiar": 3.0, "baseline_v3": 1.91, "descricao": "Razão ≥ 3,0 com ofuscamento de +0,10 (v3: vermelho 2,47 vivo / 1,98 esmaecido)"},
+  {"id": "4.razao_forcado", "item": 4, "indicador": "semaforo.razao_min_forcado", "operador": ">=", "limiar": 3.0, "baseline_v3": 1.11, "descricao": "Razão ≥ 3,0 com forced-colors (v3: 1,01–1,03)"},
+  {"id": "4.amarelo_escuro_auto", "item": 4, "indicador": "semaforo.razao_amarelo_escuro_auto", "operador": ">=", "limiar": 9.0, "baseline_v3": 3.43, "descricao": "Amarelo ≥ 9,0 sob o escurecimento automático do Chrome"},
+
+  {"id": "5.neutros_apagados", "item": 5, "indicador": "estados.neutros_com_lampada_acesa", "operador": "<=", "limiar": 0, "baseline_v3": 3, "descricao": "Simulação e demonstração vista fora da banca com 0 lâmpadas acesas (data-estado = neutro)"},
+  {"id": "5.esmaecidos_tracejado", "item": 5, "indicador": "estados.esmaecidos_sem_tracejado", "operador": "<=", "limiar": 0, "baseline_v3": 5, "descricao": "Todo estado esmaecido com borda tracejada no #semaforo"},
+  {"id": "5.acromatopsia_2x", "item": 5, "indicador": "estados.diferenca_acromatopsia", "operador": ">=", "limiar": 2.0, "baseline_v3": 0.0167, "relativo_a_v3": true, "descricao": "Diferença de pixels vivo × esmaecido (vermelho × sem ligação) em acromatopsia ≥ 2× a da v3"},
+  {"id": "5.aria_label", "item": 5, "indicador": "estados.aria_label_incorretos", "operador": "<=", "limiar": 0, "baseline_v3": 24, "descricao": "aria-label do semáforo com a concordância certa e a marca de antiga/teste em 100 % da matriz"},
+  {"id": "5.coerencia", "item": 5, "indicador": "coerencia.estados_incoerentes", "operador": "<=", "limiar": 0, "baseline_v3": 9, "descricao": "0 incoerências cor × chip × título × voz × pictograma × causa (v3: 6 de 17 estados)"},
+  {"id": "5.erro_503", "item": 5, "indicador": "estados.erro_503_sem_ligacao_ou_check", "operador": "<=", "limiar": 0, "baseline_v3": 6, "descricao": "503 nunca mostra 'Sem ligação' nem ✓"},
+
+  {"id": "6.alvos_raiz", "item": 6, "indicador": "alvos.raiz_abaixo_48", "operador": "<=", "limiar": 0, "baseline_v3": 0, "descricao": "100 % dos interativos de / com ≥ 48 px de altura (v3: link do técnico com 20 px)"},
+  {"id": "6.alvos_tecnico", "item": 6, "indicador": "alvos.tecnico_abaixo_48", "operador": "<=", "limiar": 0, "baseline_v3": 2, "descricao": "100 % dos interativos de /tecnico com ≥ 48 px de altura, com e sem o assistente"},
+
+  {"id": "7.font_size_px", "item": 7, "indicador": "texto.font_size_px_css", "operador": "<=", "limiar": 0, "baseline_v3": 52, "descricao": "0 font-size em px no CSS das duas páginas"},
+  {"id": "7.meta_text_scale", "item": 7, "indicador": "texto.paginas_sem_text_scale", "operador": "<=", "limiar": 0, "baseline_v3": 2, "descricao": "meta text-scale presente em / e /tecnico"},
+  {"id": "7.reflow", "item": 7, "indicador": "texto.casos_com_rolagem_lateral", "operador": "<=", "limiar": 0, "baseline_v3": 26, "descricao": "Texto a 130 % e 150 %: scrollWidth ≤ clientWidth a 320 e 360 px (v3: 363/405 px a 360)"},
+  {"id": "7.colisoes_topo", "item": 7, "indicador": "texto.colisoes_topo", "operador": "<=", "limiar": 0, "baseline_v3": 42, "descricao": "0 colisões no topo com texto ampliado"},
+
+  {"id": "8.acao_ate_2a_frase", "item": 8, "indicador": "voz.acao_ate_2a_frase_pct", "operador": ">=", "limiar": 100, "baseline_v3": 0, "descricao": "Em 100 % das falas curtas (≈ 841 alertas), a ação na 1ª ou 2ª frase"},
+  {"id": "8.curta_15_sem_digito", "item": 8, "indicador": "voz.curta_ate_15_palavras_sem_digito_pct", "operador": ">=", "limiar": 100, "baseline_v3": 0.2, "descricao": "fala_curta com ≤ 15 palavras e 0 dígitos em 100 % (v3: mediana de 31 palavras)"},
+  {"id": "8.flesch", "item": 8, "indicador": "voz.flesch_mediano_curta", "operador": ">=", "limiar": 80, "baseline_v3": 82.7, "descricao": "Flesch-PT (Martins 1996) mediano da fala_curta ≥ 80"},
+  {"id": "8.graus", "item": 8, "indicador": "voz.graus_e_menos_n_erros", "operador": "<=", "limiar": 0, "baseline_v3": 32, "descricao": "0 'N graus' com erro de concordância e 0 '-N'"},
+  {"id": "8.geie", "item": 8, "indicador": "voz.geie", "operador": "<=", "limiar": 0, "baseline_v3": 84, "descricao": "0 'geie'"},
+  {"id": "8.duas_regas", "item": 8, "indicador": "voz.duas_ordens_de_rega", "operador": "<=", "limiar": 0, "baseline_v3": 12, "descricao": "0 mensagens com duas ordens de rega"},
+  {"id": "8.regue_gelando", "item": 8, "indicador": "voz.regue_agora_com_gelando", "operador": "<=", "limiar": 0, "baseline_v3": 6, "descricao": "0 mensagens com 'Regue agora' junto de 'gelando agora'"},
+  {"id": "8.coerencia_voz", "item": 8, "indicador": "voz.coerencia_pct", "operador": ">=", "limiar": 100, "baseline_v3": 55.3, "descricao": "Coerência causa × voz, ação × voz e voz × ação (acoes_cobrem_mensagem) em 100 %"},
+
+  {"id": "9.avisos_falados", "item": 9, "indicador": "retorno.avisos_falados_pct", "operador": ">=", "limiar": 100, "baseline_v3": 33.3, "descricao": "100 % dos avisos falados na 1ª visita (fora os marcados como silenciosos)"},
+  {"id": "9.dialogos_falados", "item": 9, "indicador": "retorno.dialogos_falados_pct", "operador": ">=", "limiar": 100, "baseline_v3": 0, "descricao": "100 % dos diálogos falados na 1ª visita"},
+  {"id": "9.rate_repeticao", "item": 9, "indicador": "retorno.rate_repeticao", "operador": "<=", "limiar": 0.85, "baseline_v3": 0.95, "descricao": "Repetição da fala com rate ≤ 0,85"},
+  {"id": "9.rate_lembrada", "item": 9, "indicador": "retorno.rate_preferencia_lembrada", "operador": "<=", "limiar": 0.85, "baseline_v3": 0.95, "descricao": "A fala mais lenta pedida na repetição é lembrada na próxima visita"},
+
+  {"id": "10.mutacoes_parado", "item": 10, "indicador": "vivas.mutacoes_10min_parado", "operador": "<=", "limiar": 0, "baseline_v3": 720, "descricao": "0 mutações nas regiões vivas em 10 min com o estado parado"},
+  {"id": "10.faixa_demo", "item": 10, "indicador": "vivas.lotes_30s_faixa_demo", "operador": "<=", "limiar": 1, "baseline_v3": 36, "descricao": "≤ 1 lote de mutação em 30 s na faixa da demonstração"},
+
+  {"id": "11.feito_3_toques", "item": 11, "indicador": "feito.registros_3_toques", "operador": "<=", "limiar": 1, "baseline_v3": 3, "descricao": "3 toques em Feito geram 1 registro"},
+  {"id": "11.desfazer_tela", "item": 11, "indicador": "feito.desfazer_15s_na_tela", "operador": ">=", "limiar": 1, "baseline_v3": 0, "descricao": "Desfazer disponível por 15 s na tela"},
+  {"id": "11.desfazer_servidor", "item": 11, "indicador": "feito.desfazer_aceito_servidor", "operador": ">=", "limiar": 1, "baseline_v3": 0, "descricao": "POST /api/acao_feita/desfazer aceito logo depois do toque"},
+  {"id": "11.desfazer_120s", "item": 11, "indicador": "feito.desfazer_janela_servidor_120s", "operador": ">=", "limiar": 1, "baseline_v3": 0, "descricao": "Servidor aceita desfazer até 120 s e recusa depois"},
+  {"id": "11.alarmes_teste", "item": 11, "indicador": "alarmes.simulacao_e_demonstracao", "operador": "<=", "limiar": 0, "baseline_v3": 12, "descricao": "0 alarmes ou vibrações em 30 min de simulação ou demonstração vista fora da banca"},
+  {"id": "11.resumo_sem_demo", "item": 11, "indicador": "resumo.eventos_da_demonstracao", "operador": "<=", "limiar": 0, "baseline_v3": 3, "descricao": "0 pedidos, eventos e Feito da demonstração no resumo do técnico"},
+
+  {"id": "12.html_gzip", "item": 12, "indicador": "bytes.html_gzip_max", "operador": "<=", "limiar": 15000, "baseline_v3": 15907, "descricao": "GET / com gzip ≤ 15.000 B no pior estado"},
+  {"id": "12.css_gzip", "item": 12, "indicador": "bytes.css_gzip", "operador": "<=", "limiar": 6144, "baseline_v3": null, "descricao": "CSS estático ≤ 6.144 B gzip"},
+  {"id": "12.css_cache", "item": 12, "indicador": "bytes.css_cache_imutavel", "operador": ">=", "limiar": 1, "baseline_v3": 0, "descricao": "CSS estático com Cache-Control immutable e max-age=31536000"},
+  {"id": "12.html_mais_css", "item": 12, "indicador": "bytes.html_mais_css", "operador": "<=", "limiar": 21000, "baseline_v3": 15907, "descricao": "HTML + CSS ≤ 21.000 B gzip"},
+  {"id": "12.segunda_visita", "item": 12, "indicador": "bytes.segunda_visita", "operador": "<=", "limiar": 15500, "baseline_v3": 16678, "descricao": "2ª visita transfere ≤ 15.500 B"},
+  {"id": "12.slow3g", "item": 12, "indicador": "rede.primeira_lampada_ms", "operador": "<=", "limiar": 2500, "baseline_v3": 2232, "descricao": "Slow 3G + CPU 6×: 1ª lâmpada acesa em ≤ 2.500 ms"},
+  {"id": "12.outro_host", "item": 12, "indicador": "rede.recursos_outro_host", "operador": "<=", "limiar": 0, "baseline_v3": 0, "descricao": "0 recursos de outro host (página 100 % offline)"},
+
+  {"id": "13.picto_diferenca", "item": 13, "indicador": "picto.diferenca_min_pct", "operador": ">=", "limiar": 40, "baseline_v3": 26.3, "descricao": "Diferença ≥ 40 % dos pixels com tinta a 24 px em todos os pares de pictogramas"},
+  {"id": "13.mapas_injetivos", "item": 13, "indicador": "picto.mapas_nao_injetivos", "operador": "<=", "limiar": 0, "baseline_v3": 1, "descricao": "Mapas de ícones injetivos (v3: Arábica = Conilon)"},
+  {"id": "13.gabarito_iso", "item": 13, "indicador": "picto.gabarito_iso_ok", "operador": ">=", "limiar": 1, "baseline_v3": 0, "descricao": "Gabarito ISO 9186-1 com 1 linha por código de ação e de causa"},
+
+  {"id": "14.console", "item": 14, "indicador": "console.casos_com_erro", "operador": "<=", "limiar": 0, "baseline_v3": 0, "descricao": "0 erros de console em / (fora os de rede provocados)"},
+  {"id": "14.console_tecnico", "item": 14, "indicador": "console.tecnico_erros", "operador": "<=", "limiar": 0, "baseline_v3": 0, "descricao": "0 erros de console em /tecnico"}
+ ]
+}

@@ -1,0 +1,36 @@
+# AgroAnálise — alarme sonoro local na estação base (toca mesmo sem celular aberto).
+# Bipes no alto-falante do computador do sítio na TRANSIÇÃO para Vermelho e no
+# aviso de geada do fim da tarde (17:00–19:59); respeita o horário de silêncio
+# (alarme_silencio_inicio/fim), o "Feito" do agricultor e o limite de 3 toques
+# em 10 minutos. Desliga-se com alarme_local_ativo=false (configuracao_sistema).
+# Instalado por deploy/instalar.sh em /etc/systemd/system/ (o instalador troca
+# /opt/agroanalise pela pasta real da instalação).
+#   systemctl status agroanalise-alarme
+#   journalctl -u agroanalise-alarme -f
+#   /opt/agroanalise/.venv/bin/python /opt/agroanalise/src/alarme_local.py --testar-som
+[Unit]
+Description=AgroAnalise - alarme sonoro local da estacao base
+After=network.target sound.target agroanalise-coletor.service
+Wants=agroanalise-coletor.service
+# Sem limite de reinícios: num sítio sem técnico, o serviço nunca desiste.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=agroanalise
+Group=agroanalise
+# Dispositivo de som (ALSA: aplay em /dev/snd/*); dialout mantém o mesmo perfil dos demais serviços.
+SupplementaryGroups=dialout audio
+WorkingDirectory=/opt/agroanalise
+Environment=PYTHONUNBUFFERED=1
+# Via /bin/sh + exec: os sinais do systemd chegam direto ao Python e a unidade passa
+# no "systemd-analyze verify" mesmo antes de o ambiente virtual existir.
+ExecStart=/bin/sh -c 'exec /opt/agroanalise/.venv/bin/python /opt/agroanalise/src/alarme_local.py'
+KillSignal=SIGTERM
+TimeoutStopSec=20
+Restart=always
+RestartSec=5
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

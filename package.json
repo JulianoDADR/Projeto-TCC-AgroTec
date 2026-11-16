@@ -1,0 +1,17 @@
+{
+  "name": "agroanalise-ux",
+  "version": "4.0.0",
+  "private": true,
+  "description": "Testes de ponta a ponta e suíte de validação UX do AgroAnálise (Playwright, axe-core e Lighthouse em versões fixas).",
+  "license": "UNLICENSED",
+  "scripts": {
+    "postinstall": "node -e \"const fs=require('fs'),p=require('path');const o=p.dirname(require.resolve('axe-core/axe.min.js'));const d=p.join('tests','e2e','vendor');fs.mkdirSync(d,{recursive:true});fs.copyFileSync(p.join(o,'axe.min.js'),p.join(d,'axe.min.js'));fs.copyFileSync(p.join(o,'LICENSE'),p.join(d,'axe-core.LICENSE'));\"",
+    "test:ux": "scripts/rodar_testes_ux.sh",
+    "validar:ux": "scripts/validar_ux.sh"
+  },
+  "devDependencies": {
+    "axe-core": "4.14.0",
+    "lighthouse": "13.6.0",
+    "playwright": "1.63.0"
+  }
+}

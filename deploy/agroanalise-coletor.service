@@ -1,0 +1,32 @@
+# AgroAnálise — coletor 24/7 (Arduino -> saneamento -> IA -> banco).
+# Instalado por deploy/instalar.sh em /etc/systemd/system/ (o instalador troca
+# /opt/agroanalise pela pasta real da instalação).
+#   systemctl status agroanalise-coletor
+#   journalctl -u agroanalise-coletor -f
+[Unit]
+Description=AgroAnalise - coletor de sensores 24/7 (Arduino/Simulacao)
+After=network.target
+# Sem limite de reinícios: num sítio sem técnico, o serviço nunca desiste.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=agroanalise
+Group=agroanalise
+# Acesso à porta serial do Arduino (/dev/ttyUSB*, /dev/ttyACM*).
+SupplementaryGroups=dialout
+WorkingDirectory=/opt/agroanalise
+Environment=PYTHONUNBUFFERED=1
+# Via /bin/sh + exec: o shell é substituído pelo Python (os sinais do systemd chegam
+# direto ao processo) e a unidade passa no "systemd-analyze verify" mesmo antes
+# de o ambiente virtual existir (ex.: na integração contínua).
+ExecStart=/bin/sh -c 'exec /opt/agroanalise/.venv/bin/python /opt/agroanalise/src/coletor_serial.py'
+# SIGTERM: o coletor grava a fila pendente e o estado do hardware antes de sair.
+KillSignal=SIGTERM
+TimeoutStopSec=30
+Restart=always
+RestartSec=5
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

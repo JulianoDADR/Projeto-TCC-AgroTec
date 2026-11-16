@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- O texto acompanha o tamanho de fonte escolhido no celular (CSS WG, proposta "meta text-scale"). -->
+<meta name="text-scale" content="scale">
+<!-- Só tema claro: o escurecimento automático do Chrome não inverte as cores do semáforo. -->
+<meta name="color-scheme" content="only light">
+<meta name="theme-color" content="#1f4d2b">
+<meta name="description" content="Página do técnico do AgroAnálise: resumo da semana, calendário do café, WhatsApp e calibração da sonda.">
+<title>AgroAnálise — Página do técnico</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 24'%3E%3Ccircle cx='4' cy='4' r='3.5' fill='%23e5352b'/%3E%3Ccircle cx='4' cy='12' r='3.5' fill='%23ffc21a'/%3E%3Ccircle cx='4' cy='20' r='3.5' fill='%231fa64f'/%3E%3C/svg%3E">
+<style>
+  /* Página do técnico de ATER: separada da página do agricultor (orçamento próprio de 24 KB gzip).
+     Ferramenta diferente para agricultor e consultor (Rose et al., 2016):
+     https://econpapers.repec.org/RePEc:eee:agisys:v:149:y:2016:i:c:p:165-174
+     v4: alvos de 48 px (WCAG 2.5.8, alvo ampliado 2.5.5), retorno junto do botão acionado,
+     texto em rem (acompanha a fonte do celular) e os MESMOS tokens de estado da página do agricultor. */
+  :root {
+    --fundo: #f4f0e6; --superficie: #fff; --texto: #15211a; --suave: #45534a; --borda: #d6cdb8;
+    --marca: #1f4d2b; --marca-clara: #2f6b3a;
+    --verde: #1fa64f; --amarelo: #ffc21a; --vermelho: #e5352b;
+    --verde-texto: #0d5e2b; --amarelo-texto: #6b4a00; --vermelho-texto: #a3121a;
+    --verde-fundo: #e3f4e8; --amarelo-fundo: #fff3cf; --vermelho-fundo: #fde4e1;
+    --cinza: #5f6b63; --trilho: #eee8da; --foco: #1b5fd1; --raio: 1rem;
+    --fonte: "Segoe UI", Roboto, "Noto Sans", "Liberation Sans", "DejaVu Sans", Arial, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body { margin: 0; font-family: var(--fonte); font-size: 1rem; line-height: 1.45; color: var(--texto); background: var(--fundo); overflow-x: hidden; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  [hidden] { display: none !important; }
+  :focus-visible { outline: 4px solid var(--foco); outline-offset: 3px; }
+  .topo { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .75rem; padding: .5rem 1rem; background: var(--marca); color: #fff; }
+  .topo h1 { margin: 0; font-size: 1.25rem; line-height: 1.2; flex: 1 1 10rem; min-width: 0; }
+  .topo a { display: inline-flex; align-items: center; min-height: 48px; padding: 0 8px; color: #e9f7d9; font-weight: 700; border-radius: .5rem; overflow-wrap: anywhere; }
+  .topo a:focus-visible { outline-color: #fff; }
+  main { max-width: 60rem; margin: 0 auto; padding: .75rem 1rem 2rem; display: grid; gap: .75rem; }
+  #conteudo { display: grid; gap: .75rem; min-width: 0; }
+  .cartao { background: var(--superficie); border: 2px solid var(--borda); border-radius: var(--raio); padding: .875rem 1rem; min-width: 0; }
+  .cartao h2 { margin: 0 0 .625rem; font-size: 1.125rem; line-height: 1.25; }
+  .cartao h3 { margin: 0 0 .375rem; font-size: 1.0625rem; line-height: 1.25; }
+  .cartao p { margin: .375rem 0; overflow-wrap: anywhere; }
+  .suave { color: var(--suave); font-size: .9375rem; }
+  .grade { display: grid; gap: .75rem; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 47.5rem) { .grade { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .botao { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: .5rem 1rem; border-radius: .75rem; cursor: pointer; font-weight: 800; line-height: 1.2; text-align: center; text-decoration: none; background: var(--marca); color: #fff; border: 2px solid var(--marca); max-width: 100%; overflow-wrap: anywhere; }
+  .botao--claro { background: #eef6ee; color: var(--marca); border-color: var(--marca-clara); }
+  .botao[disabled] { opacity: .6; cursor: progress; }
+  select.botao { appearance: auto; }
+  .linha { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+  /* Botões de um passo em grade de 2 colunas no celular: o retorno fica a ≤ 120 px de qualquer botão. */
+  .linha--grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr)); align-items: stretch; }
+  .linha > input { flex: 1 1 10rem; min-width: 0; min-height: 48px; padding: .5rem .75rem; border: 2px solid #8d8470; border-radius: .75rem; background: #fff; }
+  .barras { display: grid; gap: .375rem; }
+  .barra { display: grid; grid-template-columns: minmax(5.5em, 40%) minmax(2rem, 1fr) auto; gap: .5rem; align-items: center; font-size: .9375rem; }
+  .barra > span:first-child { overflow-wrap: anywhere; }
+  .barra__trilho { height: 1rem; background: var(--trilho); border-radius: .5rem; overflow: hidden; box-shadow: inset 0 0 0 1px #8d8470; }
+  /* Barra clara com contorno na variante "-texto" do mesmo estado (≥ 3:1 contra o trilho, WCAG 1.4.11). */
+  .barra__cheio { height: 100%; width: 0; border-radius: .5rem; background: var(--cinza); }
+  .barra__cheio[data-cor="verde"] { background: var(--verde); box-shadow: inset 0 0 0 2px var(--verde-texto); }
+  .barra__cheio[data-cor="amarelo"] { background: var(--amarelo); box-shadow: inset 0 0 0 2px var(--amarelo-texto); }
+  .barra__cheio[data-cor="vermelho"] { background: var(--vermelho); box-shadow: inset 0 0 0 2px var(--vermelho-texto); }
+  .barra__valor { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+  .numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr)); gap: .5rem; margin: 0; }
+  .numeros div { background: #f8f5ec; border-radius: .75rem; padding: .5rem .625rem; min-width: 0; }
+  .numeros dt { font-size: .9375rem; color: var(--suave); }
+  .numeros dd { margin: .125rem 0 0; font-size: 1.375rem; font-weight: 800; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  ul.lista { margin: .375rem 0 0; padding-left: 1.125rem; }
+  ul.lista li { margin: .1875rem 0; overflow-wrap: anywhere; }
+  textarea { width: 100%; min-height: 8.75rem; padding: .625rem; border: 2px solid #8d8470; border-radius: .75rem; font-size: .9375rem; resize: vertical; }
+  .passos { margin: .375rem 0; padding-left: 1.25rem; }
+  .passo { border-top: 2px dashed var(--borda); padding-top: .75rem; margin-top: .75rem; }
+  .passo:first-of-type { border-top: 0; padding-top: 0; margin-top: .25rem; }
+  .estado-config { font-weight: 700; }
+  .estado-config[data-ligada="true"] { color: var(--verde-texto); }
+  /* Retorno de cada passo, logo abaixo dos botões: some quando vazio, mas continua na árvore (região viva). */
+  .retorno-passo, .erro-passo, .aviso, .ok { border-radius: .75rem; font-weight: 700; }
+  .retorno-passo:not(:empty), .ok:not(:empty) { padding: .625rem .75rem; background: var(--verde-fundo); color: var(--verde-texto); border-left: 6px solid var(--verde-texto); }
+  .erro-passo:not(:empty), .aviso:not(:empty) { padding: .625rem .75rem; background: var(--vermelho-fundo); color: var(--vermelho-texto); border-left: 6px solid var(--vermelho-texto); }
+  .cartao p.retorno-passo:empty, .cartao p.erro-passo:empty, .cartao p.ok:empty, .cartao p.aviso:empty { margin: 0; }
+  .confirmacao { margin-top: .625rem; padding: .75rem; border: 2px solid var(--amarelo-texto); border-radius: .75rem; background: var(--amarelo-fundo); }
+  .confirmacao__texto { font-weight: 800; }
+  .confirmacao__pin { display: grid; gap: .25rem; margin: .5rem 0; font-weight: 700; }
+  .confirmacao__pin input { min-height: 48px; padding: .5rem .75rem; border: 2px solid #8d8470; border-radius: .75rem; background: #fff; max-width: 14rem; }
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+</head>
+<body>
+<header class="topo">
+  <h1>Página do técnico</h1>
+  <a href="/">Voltar à tela do agricultor</a>
+</header>
+<main>
+  <section class="cartao" id="cartao-pin" hidden>
+    <h2>Senha da banca</h2>
+    <p class="suave">Esta página mostra o histórico da propriedade. Digite a senha da banca (PIN).</p>
+    <form class="linha" id="form-pin">
+      <input id="pin" type="password" inputmode="numeric" autocomplete="off" aria-label="Senha da banca" required>
+      <button class="botao" type="submit">Entrar</button>
+    </form>
+    <p class="aviso" id="pin-erro" role="alert"></p>
+  </section>
+
+  <div id="conteudo" hidden>
+    <section class="cartao" aria-labelledby="titulo-resumo">
+      <h2 id="titulo-resumo">Resumo</h2>
+      <div class="linha">
+        <label for="dias">Período:</label>
+        <select id="dias" class="botao botao--claro">
+          <option value="1">1 dia</option>
+          <option value="7" selected>7 dias</option>
+          <option value="14">14 dias</option>
+          <option value="30">30 dias</option>
+          <option value="90">90 dias</option>
+        </select>
+        <button class="botao botao--claro" type="button" id="atualizar">Atualizar</button>
+      </div>
+      <p class="ok" id="mensagem" role="status"></p>
+      <p class="aviso" id="erro" role="alert"></p>
+      <p class="suave" id="periodo"></p>
+    </section>
+
+    <div class="grade">
+      <section class="cartao">
+        <h2>Horas por cor (medição de campo)</h2>
+        <div class="barras" id="barras-cor"></div>
+        <p class="suave" id="horas-simulacao"></p>
+      </section>
+      <section class="cartao">
+        <h2>Horas por causa</h2>
+        <div class="barras" id="barras-causa"></div>
+      </section>
+      <section class="cartao">
+        <h2>Avisos antecipados (12 h)</h2>
+        <dl class="numeros">
+          <div><dt>Confirmados por Vermelho</dt><dd id="av-confirmados">—</dd></div>
+          <div><dt>Não confirmados</dt><dd id="av-nao">—</dd></div>
+          <div><dt>Ainda em aberto</dt><dd id="av-pendentes">—</dd></div>
+          <div><dt>Antecedência (mediana)</dt><dd id="av-antecedencia">—</dd></div>
+        </dl>
+        <p class="suave" id="prognostico"></p>
+      </section>
+      <section class="cartao">
+        <h2>Retorno do agricultor</h2>
+        <dl class="numeros">
+          <div><dt>"Feito" tocados</dt><dd id="feitos">—</dd></div>
+          <div><dt>Pedidos de ajuda</dt><dd id="pedidos">—</dd></div>
+          <div><dt>Ouviu a orientação</dt><dd id="ev-ouviu">—</dd></div>
+          <div><dt>Tocou num desenho</dt><dd id="ev-tocou">—</dd></div>
+        </dl>
+        <ul class="lista" id="lista-feitos"></ul>
+      </section>
+      <section class="cartao">
+        <h2>Sensores e saúde técnica</h2>
+        <p id="sensor"></p>
+        <ul class="lista" id="lista-sensor"></ul>
+        <p id="saude"></p>
+        <p id="sonda"></p>
+      </section>
+      <section class="cartao" id="cartao-whatsapp">
+        <h2>WhatsApp</h2>
+        <label for="texto-whatsapp" class="suave">Resumo pronto (até 700 letras, sem dado pessoal além do nome da propriedade):</label>
+        <textarea id="texto-whatsapp" readonly></textarea>
+        <div class="linha">
+          <button class="botao" type="button" id="copiar">Copiar o texto</button>
+          <a class="botao botao--claro" id="abrir-whatsapp" href="#" target="_blank" rel="noopener">Abrir no WhatsApp</a>
+        </div>
+        <p class="retorno-passo" role="status"></p>
+        <p class="erro-passo" role="alert"></p>
+        <div class="passo">
+          <form class="linha" id="form-numero">
+            <input id="numero" type="tel" inputmode="tel" autocomplete="off" placeholder="Número do técnico: 35 99999 0000" aria-label="Número do WhatsApp do técnico">
+            <button class="botao botao--claro" type="submit">Salvar número</button>
+          </form>
+          <p class="retorno-passo" role="status"></p>
+          <p class="erro-passo" role="alert"></p>
+          <p class="suave" id="numero-estado"></p>
+        </div>
+      </section>
+    </div>
+
+    <!-- Configuração agronômica: saiu da "Área da banca" da página do agricultor (v4). Mudam a regra do
+         semáforo de TODOS os celulares, então cada uma diz a consequência e pede confirmação. -->
+    <section class="cartao" id="calendario" aria-labelledby="titulo-calendario">
+      <h2 id="titulo-calendario">Calendário do café</h2>
+      <p class="suave">Estas escolhas mudam o semáforo de todos os celulares do sítio. Combine com o agricultor antes.</p>
+      <div class="passo" id="passo-seca">
+        <h3>Seca programada</h3>
+        <p class="estado-config" id="t-seca-estado">Seca programada: carregando…</p>
+        <div class="linha">
+          <button class="botao botao--claro" type="button" id="t-seca" aria-expanded="false" aria-controls="conf-seca">Ligar seca programada</button>
+        </div>
+        <div class="confirmacao" id="conf-seca" role="group" aria-labelledby="conf-seca-texto" hidden>
+          <p class="confirmacao__texto" id="conf-seca-texto" tabindex="-1"></p>
+          <p class="suave" id="conf-seca-detalhe"></p>
+          <label class="confirmacao__pin" hidden>Senha da banca (PIN)
+            <input type="password" inputmode="numeric" autocomplete="off" data-pin-confirmacao>
+          </label>
+          <div class="linha">
+            <button class="botao" type="button" data-confirmar>Confirmar</button>
+            <button class="botao botao--claro" type="button" data-cancelar>Cancelar</button>
+          </div>
+        </div>
+        <p class="retorno-passo" role="status"></p>
+        <p class="erro-passo" role="alert"></p>
+      </div>
+      <div class="passo" id="passo-florada">
+        <h3>Florada principal</h3>
+        <p class="estado-config" id="t-florada-estado">Florada: carregando…</p>
+        <div class="linha">
+          <button class="botao botao--claro" type="button" id="t-florada" aria-expanded="false" aria-controls="conf-florada">O café floriu hoje</button>
+        </div>
+        <div class="confirmacao" id="conf-florada" role="group" aria-labelledby="conf-florada-texto" hidden>
+          <p class="confirmacao__texto" id="conf-florada-texto" tabindex="-1"></p>
+          <p class="suave" id="conf-florada-detalhe"></p>
+          <label class="confirmacao__pin" hidden>Senha da banca (PIN)
+            <input type="password" inputmode="numeric" autocomplete="off" data-pin-confirmacao>
+          </label>
+          <div class="linha">
+            <button class="botao" type="button" data-confirmar>Confirmar</button>
+            <button class="botao botao--claro" type="button" data-cancelar>Cancelar</button>
+          </div>
+        </div>
+        <p class="retorno-passo" role="status"></p>
+        <p class="erro-passo" role="alert"></p>
+      </div>
+    </section>
+
+    <section class="cartao" id="calibracao" aria-labelledby="titulo-calibracao">
+      <h2 id="titulo-calibracao">Calibração da sonda de solo</h2>
+      <p class="suave">A reta de fábrica não é a do solo do sítio. A aferição de um ponto no próprio campo erra bem menos que a calibração de laboratório levada ao campo.</p>
+      <p id="cal-estado"></p>
+      <div class="passo" id="passo-aferir">
+        <h3>Aferição de 1 ponto no campo (recomendada)</h3>
+        <ol class="passos">
+          <li>Deixe a sonda parada na terra por 1 minuto.</li>
+          <li>Meça a umidade da mesma terra com o método de referência (estufa ou sonda de referência).</li>
+          <li>Digite o valor e toque em "Aferir".</li>
+        </ol>
+        <form class="linha" id="form-aferir">
+          <input id="referencia" type="number" min="0" max="100" step="0.1" inputmode="decimal" placeholder="Umidade de referência (%)" aria-label="Umidade de referência em porcentagem" required>
+          <button class="botao" type="submit">Aferir</button>
+        </form>
+        <p class="retorno-passo" role="status"></p>
+        <p class="erro-passo" role="alert"></p>
+      </div>
+      <div class="passo" id="passo-dois-pontos">
+        <h3>Calibração de 2 pontos</h3>
+        <ol class="passos">
+          <li>Sonda na terra SECA do sítio, parada por 1 minuto: toque em "Medir terra seca".</li>
+          <li>Molhe bem a mesma terra e espere 1 minuto: toque em "Medir terra molhada".</li>
+          <li>Toque em "Concluir".</li>
+        </ol>
+        <div class="linha linha--grade">
+          <button class="botao botao--claro" type="button" data-ponto="SECO">Medir terra seca</button>
+          <button class="botao botao--claro" type="button" data-ponto="UMIDO">Medir terra molhada</button>
+          <button class="botao" type="button" id="concluir">Concluir</button>
+          <button class="botao botao--claro" type="button" id="fabrica">Voltar à reta de fábrica</button>
+        </div>
+        <p class="retorno-passo" role="status"></p>
+        <p class="erro-passo" role="alert"></p>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var CHAVE_PIN = "agro_pin_banca";
+  var CORES = [["verde", "Verde"], ["amarelo", "Amarelo"], ["vermelho", "Vermelho"]];
+  var LEGENDAS_PADRAO = { SEM_DETALHE: "Sem detalhe" };
+  var MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+  var estadoBanca = null;
+
+  function $(id) { return document.getElementById(id); }
+
+  function lerPin() { try { return window.sessionStorage.getItem(CHAVE_PIN) || ""; } catch (erro) { return ""; } }
+  function gravarPin(valor) {
+    try { if (valor) { window.sessionStorage.setItem(CHAVE_PIN, valor); } else { window.sessionStorage.removeItem(CHAVE_PIN); } }
+    catch (erro) { /* navegador sem armazenamento: pede o PIN de novo */ }
+  }
+
+  // Chamada à API com o PIN no cabeçalho X-PIN-Banca; erro com o código HTTP.
+  function api(metodo, url, corpo) {
+    var cabecalhos = { "Accept": "application/json" };
+    var pin = lerPin();
+    if (pin) { cabecalhos["X-PIN-Banca"] = pin; }
+    if (corpo !== undefined) { cabecalhos["Content-Type"] = "application/json"; }
+    return fetch(url, { method: metodo, headers: cabecalhos, cache: "no-store", body: corpo === undefined ? undefined : JSON.stringify(corpo) })
+      .then(function (resposta) {
+        return resposta.json().catch(function () { return {}; }).then(function (dados) {
+          if (!resposta.ok && !(url === "/api/saude" && resposta.status === 503)) {
+            var erro = new Error(dados && dados.erro ? dados.erro : "Não foi possível completar o pedido.");
+            erro.status = resposta.status;
+            throw erro;
+          }
+          return dados;
+        });
+      });
+  }
+
+  function numero(valor, casas) {
+    if (valor === null || valor === undefined || isNaN(valor)) { return "—"; }
+    return Number(valor).toLocaleString("pt-BR", { maximumFractionDigits: casas === undefined ? 1 : casas });
+  }
+
+  function dataHora(texto) {
+    var data = new Date(texto);
+    return isNaN(data) ? String(texto || "") : data.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  }
+
+  // "MM-DD" → "4 de setembro" (texto falável, sem número de mês).
+  function diaMes(texto) {
+    var partes = /^(\d{2})-(\d{2})$/.exec(String(texto || ""));
+    if (!partes) { return String(texto || ""); }
+    return Number(partes[2]) + " de " + MESES[Number(partes[1]) - 1];
+  }
+
+  function hojeTexto() {
+    return new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+
+  // Par de retorno (role=status) e erro (role=alert) do cartão do botão; sem botão, os globais do resumo.
+  function parDe(botao) {
+    var caixa = botao && botao.closest ? botao.closest(".passo, .cartao") : null;
+    var retorno = caixa ? caixa.querySelector(".retorno-passo") : null;
+    var erro = caixa ? caixa.querySelector(".erro-passo") : null;
+    return { retorno: retorno || $("mensagem"), erro: erro || $("erro") };
+  }
+
+  function escrever(botao, texto, ehErro) {
+    var par = parDe(botao);
+    var alvo = ehErro ? par.erro : par.retorno;
+    var outro = ehErro ? par.retorno : par.erro;
+    outro.textContent = "";
+    alvo.textContent = texto;
+    if (alvo.scrollIntoView) { alvo.scrollIntoView({ block: "nearest" }); }
+  }
+
+  function mostrar(botao, texto) { escrever(botao, texto, false); }
+  function mostrarErro(botao, texto) { escrever(botao, texto, true); }
+
+  function desenharBarras(alvo, itens) {
+    var maximo = itens.reduce(function (m, item) { return Math.max(m, item.valor); }, 0) || 1;
+    var area = $(alvo);
+    area.textContent = "";
+    if (!itens.length) { area.textContent = "Nenhuma hora no período."; return; }
+    itens.forEach(function (item) {
+      var linha = document.createElement("div");
+      linha.className = "barra";
+      var nome = document.createElement("span");
+      nome.textContent = item.nome;
+      var trilho = document.createElement("div");
+      trilho.className = "barra__trilho";
+      var cheio = document.createElement("div");
+      cheio.className = "barra__cheio";
+      if (item.cor) { cheio.setAttribute("data-cor", item.cor); }
+      cheio.style.width = Math.round(100 * item.valor / maximo) + "%";
+      trilho.appendChild(cheio);
+      var valor = document.createElement("span");
+      valor.className = "barra__valor";
+      valor.textContent = numero(item.valor) + " h";
+      linha.appendChild(nome);
+      linha.appendChild(trilho);
+      linha.appendChild(valor);
+      area.appendChild(linha);
+    });
+  }
+
+  function preencherLista(alvo, linhas) {
+    var lista = $(alvo);
+    lista.textContent = "";
+    linhas.forEach(function (texto) { var item = document.createElement("li"); item.textContent = texto; lista.appendChild(item); });
+  }
+
+  function aplicarResumo(r) {
+    $("titulo-resumo").textContent = "Resumo — " + (r.nome_propriedade || "propriedade") + " · " + (r.nome_cultura || "");
+    $("periodo").textContent = "De " + dataHora(r.periodo.inicio_utc) + " até " + dataHora(r.periodo.fim_utc)
+      + " · regra de temperatura: " + (r.configuracao.regra_temperatura === "fisiologica" ? "fisiológica" : "instantânea");
+    desenharBarras("barras-cor", CORES.map(function (cor) { return { nome: cor[1], valor: Number(r.horas_por_cor[cor[0]] || 0), cor: cor[0] }; }));
+    $("horas-simulacao").textContent = r.horas_simulacao ? "Fora da conta: " + numero(r.horas_simulacao) + " h de simulação (sensor desligado)." : "";
+    var legendas = Object.assign({}, LEGENDAS_PADRAO, r.legendas_causa || {});
+    desenharBarras("barras-causa", Object.keys(r.horas_por_causa).filter(function (causa) { return r.horas_por_causa[causa] > 0; })
+      .map(function (causa) { return { nome: legendas[causa] || causa, valor: Number(r.horas_por_causa[causa]) }; }));
+    var avisos = r.avisos_antecipados;
+    $("av-confirmados").textContent = avisos.confirmados;
+    $("av-nao").textContent = avisos.nao_confirmados;
+    $("av-pendentes").textContent = avisos.pendentes;
+    $("av-antecedencia").textContent = avisos.antecedencia_mediana_h === null ? "—" : numero(avisos.antecedencia_mediana_h) + " h";
+    var prog = r.prognostico;
+    $("prognostico").textContent = !prog.disponivel ? "Previsão de 12 h indisponível neste computador."
+      : prog.suspenso ? "Previsão de 12 h SUSPENSA: o erro no local ficou alto (Brier " + numero(prog.brier_local_28d, 3) + ")."
+      : "Previsão de 12 h ativa" + (prog.brier_local_28d === null ? " (ainda sem avaliação local)." : " · Brier local 28 dias: " + numero(prog.brier_local_28d, 3) + ".");
+    $("feitos").textContent = r.acoes_feitas.total;
+    $("pedidos").textContent = r.pedidos_ajuda.total;
+    $("ev-ouviu").textContent = r.eventos_interface.ouviu;
+    $("ev-tocou").textContent = r.eventos_interface.tocou_pictograma;
+    preencherLista("lista-feitos", r.acoes_feitas.ultimas.slice(0, 5).map(function (a) {
+      return dataHora(a.instante_utc) + ": " + (a.descricao || a.codigo_acao) + " (" + (legendas[a.causa] || a.causa) + ")";
+    }).concat(r.pedidos_ajuda.ultimos.slice(0, 3).map(function (p) {
+      return dataHora(p.instante_utc) + ": pedido de ajuda (" + (legendas[p.causa] || p.causa || "sem causa") + ")";
+    })));
+    var sensor = r.problemas_sensor;
+    $("sensor").textContent = sensor.leituras ? sensor.horas + " h com sensor suspeito (" + sensor.leituras + " leituras)." : "Nenhum problema de sensor no período.";
+    preencherLista("lista-sensor", sensor.ultimos.slice(0, 5).map(function (s) { return s.estado + ": " + (s.diagnostico || "sem diagnóstico") + " · " + s.horas + " h"; }));
+    var cal = r.calibracao || {};
+    $("sonda").textContent = cal.dias_desde_calibracao === null || cal.dias_desde_calibracao === undefined
+      ? "Sonda de solo: sem calibração no sítio (reta de fábrica)." : "Sonda de solo: calibrada há " + cal.dias_desde_calibracao + " dias (" + cal.metodo + ").";
+    $("texto-whatsapp").value = r.texto_whatsapp;
+    $("abrir-whatsapp").href = r.link_whatsapp;
+    $("numero-estado").textContent = r.configuracao.numero_whatsapp_cadastrado
+      ? "Número do técnico cadastrado: o botão \"Técnico\" do agricultor abre o WhatsApp com o recado."
+      : "Sem número cadastrado: o botão \"Técnico\" só anota o pedido no computador.";
+  }
+
+  function aplicarCalibracao(c) {
+    var pendentes = Object.keys(c.pontos_pendentes || {});
+    $("cal-estado").textContent = (c.dias_desde_calibracao === null ? "Calibração atual: reta de fábrica." : "Calibrado há " + c.dias_desde_calibracao + " dias (" + c.metodo + ").")
+      + (pendentes.length ? " Pontos já medidos: " + pendentes.join(", ") + "." : "");
+  }
+
+  function aplicarSaude(s) {
+    var c = s.componentes || {};
+    var prog = c.prognostico || {};
+    $("saude").textContent = "Saúde técnica: " + (s.ok ? "tudo funcionando" : "com problema")
+      + " · coletor " + (c.coletor && c.coletor.vivo ? "ligado" : "parado")
+      + " · previsão " + (prog.suspenso ? "suspensa" : prog.disponivel ? "ativa" : "indisponível") + ".";
+  }
+
+  // Calendário do café: estado atual da seca programada e da florada (GET /api/cenarios, campo "banca").
+  function aplicarCalendario(banca) {
+    estadoBanca = banca;
+    var ligada = !!banca.seca_programada_ativa;
+    var janela = diaMes(banca.seca_programada_inicio) + " a " + diaMes(banca.seca_programada_fim);
+    $("t-seca-estado").textContent = "Seca programada: " + (ligada ? "LIGADA (de " + janela + ")" : "desligada");
+    $("t-seca-estado").setAttribute("data-ligada", ligada ? "true" : "false");
+    $("t-seca").textContent = ligada ? "Desligar seca programada" : "Ligar seca programada";
+    var florada = /^(\d{4})-(\d{2})-(\d{2})$/.exec(banca.data_florada_principal || "");
+    $("t-florada-estado").textContent = florada ? "Florada principal anotada em " + florada[3] + "/" + florada[2] + "/" + florada[1] + "." : "Florada principal: ainda não anotada.";
+  }
+
+  function carregarCalendario() {
+    return api("GET", "/api/cenarios").then(function (d) { aplicarCalendario(d.banca || {}); })
+      .catch(function (erro) { mostrarErro($("t-seca"), erro.message || "Não consegui ler o calendário do café."); });
+  }
+
+  // Hoje (mês e dia) está dentro da janela "MM-DD" a "MM-DD"? A janela pode cruzar o ano.
+  function dentroDaJanela(inicio, fim) {
+    var hoje = new Date();
+    var chave = (hoje.getMonth() + 1) * 100 + hoje.getDate();
+    var a = Number(String(inicio).replace("-", "")), b = Number(String(fim).replace("-", ""));
+    if (!a || !b) { return false; }
+    return a <= b ? (chave >= a && chave <= b) : (chave >= a || chave <= b);
+  }
+
+  // Texto da consequência ANTES de confirmar (Nielsen: prevenção de erro; WCAG 3.3.4).
+  function consequencia(tipo) {
+    var banca = estadoBanca || {};
+    if (tipo === "florada") {
+      var anterior = /^(\d{4})-(\d{2})-(\d{2})$/.exec(banca.data_florada_principal || "");
+      return ["A data da florada será hoje. Confirmar?",
+        "Hoje é " + hojeTexto() + (anterior ? "; a data anotada antes era " + anterior[3] + "/" + anterior[2] + "/" + anterior[1] : "")
+        + ". Nas semanas seguintes o aparelho fica atento ao calor nas flores."];
+    }
+    var fim = diaMes(banca.seca_programada_fim || "09-04");
+    var inicio = diaMes(banca.seca_programada_inicio || "06-24");
+    if (banca.seca_programada_ativa) {
+      return ["O aparelho volta a mandar regar quando a terra secar. Confirmar?", "A seca programada fica desligada até alguém ligar de novo."];
+    }
+    return [(dentroDaJanela(banca.seca_programada_inicio || "06-24", banca.seca_programada_fim || "09-04") ? "Até " + fim : "De " + inicio + " a " + fim)
+      + " o aparelho não vai mandar regar. Confirmar?", "Só avisa se a terra ficar seca demais. Use para o estresse hídrico que uniformiza a florada."];
+  }
+
+  // Confirmação em linha (consequência + Confirmar/Cancelar de 48 px) antes de chamar a rota da banca.
+  function prepararConfirmacao(tipo, botao, caixa, url) {
+    var texto = caixa.querySelector(".confirmacao__texto");
+    var detalhe = caixa.querySelector(".suave");
+    var rotuloPin = caixa.querySelector(".confirmacao__pin");
+    var campoPin = caixa.querySelector("[data-pin-confirmacao]");
+    var confirmar = caixa.querySelector("[data-confirmar]");
+    var cancelar = caixa.querySelector("[data-cancelar]");
+
+    function fechar(devolverFoco) {
+      caixa.hidden = true;
+      rotuloPin.hidden = true;
+      campoPin.value = "";
+      botao.setAttribute("aria-expanded", "false");
+      if (devolverFoco) { botao.focus(); }
+    }
+
+    botao.addEventListener("click", function () {
+      if (!caixa.hidden) { fechar(true); return; }
+      var frases = consequencia(tipo);
+      texto.textContent = frases[0];
+      detalhe.textContent = frases[1];
+      parDe(botao).retorno.textContent = "";
+      parDe(botao).erro.textContent = "";
+      caixa.hidden = false;
+      botao.setAttribute("aria-expanded", "true");
+      texto.focus();
+      if (caixa.scrollIntoView) { caixa.scrollIntoView({ block: "nearest" }); }
+    });
+    cancelar.addEventListener("click", function () {
+      fechar(true);
+      mostrar(botao, "Nada foi mudado.");
+    });
+    confirmar.addEventListener("click", function () {
+      if (!rotuloPin.hidden) {
+        if (!campoPin.value.trim()) { mostrarErro(botao, "Digite a senha da banca para confirmar."); campoPin.focus(); return; }
+        gravarPin(campoPin.value.trim());
+      }
+      confirmar.disabled = true;
+      // Seca: pede o estado desejado (não só "inverter"), para não desfazer a mudança de outro aparelho.
+      var corpo = tipo === "seca" ? { ativa: !(estadoBanca && estadoBanca.seca_programada_ativa) } : {};
+      api("POST", url, corpo).then(function (d) {
+        fechar(false);
+        aplicarCalendario(d);
+        mostrar(botao, d.fala || "Feito.");
+        botao.focus();
+      }).catch(function (erro) {
+        if (erro.status === 403) {
+          gravarPin("");
+          rotuloPin.hidden = false;
+          campoPin.value = "";
+          mostrarErro(botao, "Esta mudança pede a senha da banca. Digite a senha e toque em Confirmar. Nada foi mudado.");
+          campoPin.focus();
+          return;
+        }
+        mostrarErro(botao, (erro.message || "Não foi possível mudar.") + " Nada foi mudado.");
+      }).finally(function () { confirmar.disabled = false; });
+    });
+  }
+
+  function pedirPin(mensagem) {
+    gravarPin("");
+    $("conteudo").hidden = true;
+    $("cartao-pin").hidden = false;
+    $("pin-erro").textContent = mensagem || "";
+    $("pin").focus();
+  }
+
+  function falha(erro, botao) {
+    if (erro.status === 403) { pedirPin(erro.message); return; }
+    var texto = erro.message || "Sem ligação com o computador do sítio.";
+    if (botao) { mostrarErro(botao, texto); } else { mostrarErro(null, texto); }
+  }
+
+  function carregar() {
+    return api("GET", "/api/tecnico/resumo?dias=" + encodeURIComponent($("dias").value)).then(function (r) {
+      $("cartao-pin").hidden = true;
+      $("conteudo").hidden = false;
+      $("erro").textContent = "";
+      aplicarResumo(r);
+      carregarCalendario();
+      api("GET", "/api/calibracao").then(aplicarCalibracao).catch(function (erro) { falha(erro, $("concluir")); });
+      api("GET", "/api/saude").then(aplicarSaude).catch(function () { $("saude").textContent = "Saúde técnica indisponível."; });
+    }).catch(function (erro) { falha(erro, null); });
+  }
+
+  function acao(botao, metodo, url, corpo, aoTerminar) {
+    if (botao) { botao.disabled = true; }
+    return api(metodo, url, corpo).then(function (dados) {
+      if (aoTerminar) { aoTerminar(dados); }
+      return carregar();
+    }).catch(function (erro) { falha(erro, botao); }).finally(function () { if (botao) { botao.disabled = false; } });
+  }
+
+  function botaoDoFormulario(evento) {
+    return evento.submitter || evento.target.querySelector("button[type=submit], button");
+  }
+
+  $("form-pin").addEventListener("submit", function (evento) {
+    evento.preventDefault();
+    gravarPin($("pin").value.trim());
+    carregar();
+  });
+  $("dias").addEventListener("change", carregar);
+  $("atualizar").addEventListener("click", function () {
+    carregar().then(function () { if (!$("conteudo").hidden && !$("erro").textContent) { mostrar(null, "Resumo atualizado às " + new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) + "."); } });
+  });
+  $("copiar").addEventListener("click", function () {
+    var botao = $("copiar");
+    var campo = $("texto-whatsapp");
+    campo.select();
+    var copiado = navigator.clipboard && window.isSecureContext ? navigator.clipboard.writeText(campo.value) : Promise.resolve(document.execCommand("copy"));
+    copiado.then(function () { mostrar(botao, "Texto copiado."); }).catch(function () { mostrarErro(botao, "Não consegui copiar: selecione o texto e copie."); });
+  });
+  $("form-numero").addEventListener("submit", function (evento) {
+    evento.preventDefault();
+    var botao = botaoDoFormulario(evento);
+    acao(botao, "POST", "/api/tecnico/configuracao", { numero_whatsapp_tecnico: $("numero").value }, function (d) {
+      mostrar(botao, d.numero_whatsapp_tecnico ? "Número salvo: " + d.numero_whatsapp_tecnico : "Número apagado.");
+    });
+  });
+  $("form-aferir").addEventListener("submit", function (evento) {
+    evento.preventDefault();
+    var botao = botaoDoFormulario(evento);
+    acao(botao, "POST", "/api/calibracao/aferir", { valor_referencia_pct: Number($("referencia").value) }, function (d) {
+      mostrar(botao, "Aferição salva: a reta andou para bater com " + numero($("referencia").value) + " %.");
+      aplicarCalibracao({ dias_desde_calibracao: 0, metodo: d.calibracao.metodo });
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ponto]"), function (botao) {
+    botao.addEventListener("click", function () {
+      var tipo = botao.getAttribute("data-ponto");
+      acao(botao, "POST", "/api/calibracao/ponto", { tipo: tipo }, function (d) {
+        mostrar(botao, (tipo === "SECO" ? "Terra seca" : "Terra molhada") + " medida: " + numero(d.ponto.percentual_firmware) + " % no aparelho (" + d.ponto.leituras + " leituras).");
+      });
+    });
+  });
+  $("concluir").addEventListener("click", function () {
+    acao($("concluir"), "POST", "/api/calibracao/concluir", {}, function () { mostrar($("concluir"), "Calibração de 2 pontos salva."); });
+  });
+  $("fabrica").addEventListener("click", function () {
+    acao($("fabrica"), "POST", "/api/calibracao/fabrica", {}, function () { mostrar($("fabrica"), "Voltou à reta de fábrica."); });
+  });
+  prepararConfirmacao("seca", $("t-seca"), $("conf-seca"), "/api/banca/seca_programada");
+  prepararConfirmacao("florada", $("t-florada"), $("conf-florada"), "/api/banca/florada");
+  carregar();
+})();
+</script>
+</body>
+</html>

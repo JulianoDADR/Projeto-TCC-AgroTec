@@ -1,0 +1,145 @@
+---
+title: AgroAnálise v4 — DER do SQLite3 (data/agroanalise.db), esquema real (PRAGMA) de database.py, prognostico.py, retorno_agricultor.py e calibracao_sonda.py
+---
+erDiagram
+    culturas ||--|{ parametros_cultura : "possui faixas, FK id_cultura ON DELETE CASCADE"
+    culturas ||--o{ historico_leituras : "recebe leituras, FK id_cultura"
+    culturas ||--o{ historico_agregado_hora : "medias por hora apos a retencao, FK id_cultura"
+    historico_leituras ||--o| analise_antecipacao : "prognostico da leitura, FK id_leitura ON DELETE CASCADE"
+    culturas ||..o| configuracao_sistema : "chaves cultura_ativa e cultura_anterior guardam culturas.codigo (vinculo logico)"
+    historico_leituras |o--o{ registro_acoes : "v3 Feito do agricultor, FK id_leitura ON DELETE SET NULL"
+    historico_leituras |o--o{ pedido_ajuda : "v3 pedido de ajuda, FK id_leitura ON DELETE SET NULL"
+
+    culturas {
+        INTEGER id_cultura PK "AUTOINCREMENT"
+        TEXT codigo UK "NOT NULL UNIQUE, slug ex cafe_arabica"
+        TEXT nome_comum "NOT NULL, ex Cafe Arabica"
+        TEXT nome_cientifico "NULL, ex Coffea arabica"
+        TEXT categoria "NOT NULL CHECK cafe fruta grao hortalica leguminosa outra"
+        TEXT descricao "NULL"
+        INTEGER ativo "NOT NULL DEFAULT 1 CHECK 0 ou 1"
+        TEXT criado_em "NOT NULL DEFAULT datetime now localtime"
+    }
+
+    parametros_cultura {
+        INTEGER id_parametro PK "AUTOINCREMENT"
+        INTEGER id_cultura FK,UK "NOT NULL, UNIQUE id_cultura + variavel"
+        TEXT variavel UK "NOT NULL, temperatura_ar umidade_ar umidade_solo ou nova variavel"
+        TEXT unidade "NOT NULL, graus C ou porcento"
+        REAL ideal_min "NOT NULL, inicio da faixa VERDE"
+        REAL ideal_max "NOT NULL, fim da faixa VERDE"
+        REAL atencao_min "NOT NULL, borda inferior da faixa AMARELA"
+        REAL atencao_max "NOT NULL, borda superior da faixa AMARELA"
+        REAL critico_min "NOT NULL, dano severo abaixo, mensagem Urgente"
+        REAL critico_max "NOT NULL, dano severo acima, mensagem Urgente"
+        TEXT fonte_referencia "NULL, ex Embrapa Cafe e Incaper"
+        TEXT atualizado_em "NOT NULL DEFAULT datetime now localtime"
+    }
+
+    historico_leituras {
+        INTEGER id_leitura PK "AUTOINCREMENT, ordem oficial de gravacao"
+        TEXT data_hora "NOT NULL, YYYY-MM-DD HH:MM:SS local"
+        INTEGER id_cultura FK "NOT NULL REFERENCES culturas"
+        TEXT origem "NOT NULL CHECK CAMPO_USB SIMULACAO DEMONSTRACAO DATASET"
+        REAL temperatura_ar_bruta "NULL quando NaN"
+        REAL umidade_ar_bruta "NULL quando NaN"
+        REAL umidade_solo_bruta "NULL quando NaN"
+        REAL temperatura_ar "NOT NULL, saneada e filtrada"
+        REAL umidade_ar "NOT NULL, saneada e filtrada"
+        REAL umidade_solo "NOT NULL, saneada e filtrada"
+        REAL deficit_hidrico_solo "NOT NULL, positivo falta agua"
+        REAL desvio_termico "NOT NULL, positivo calor"
+        INTEGER status_regra "NOT NULL CHECK 0 1 2"
+        INTEGER status_predito "NOT NULL CHECK 0 1 2, IA do instante ou antecipacao"
+        INTEGER status_alerta "NOT NULL CHECK 0 1 2, cor gravada"
+        REAL probabilidade_predicao "NOT NULL CHECK entre 0 e 1"
+        INTEGER flag_anomalia "NOT NULL DEFAULT 0 CHECK 0 ou 1"
+        TEXT descricao_anomalia "NOT NULL DEFAULT vazio"
+        TEXT mensagem_voz "NOT NULL, orientacao falada"
+        TEXT versao_modelo "NOT NULL, versao do pkl ou REGRAS"
+        TEXT motivo_regra "v3 NOT NULL DEFAULT vazio, GEADA_AGORA DIA_FRIO CALOR_FLORADA ..."
+        TEXT base_temperatura "v3 NOT NULL DEFAULT vazio, instantanea ou media_24h"
+        REAL temperatura_media_24h "v3 NULL, media de 24 h usada pela regra fisiologica"
+        REAL umidade_solo_firmware "v3 NULL, umidade do firmware antes da calibracao"
+        TEXT estado_sensor "v2 NOT NULL DEFAULT OK CHECK OK SUSPEITO DEFEITO"
+        TEXT diagnostico_sensor "v2 NOT NULL DEFAULT vazio"
+        TEXT instante_utc "v2 NULL, ISO 8601 com +00:00"
+    }
+
+    analise_antecipacao {
+        INTEGER id_leitura PK,FK "REFERENCES historico_leituras ON DELETE CASCADE"
+        REAL probabilidade_risco_futuro "NULL sem modelo, P de Vermelho em 12 h"
+        REAL horas_ate_secar "NULL, ETA ate atencao_min do solo, teto 72 h"
+        REAL temperatura_minima_prevista "NULL fora da janela 17 h a 6 h"
+        TEXT motivo_principal "NOT NULL CHECK SECA_CHEGANDO SECA_AGORA ENCHARCAMENTO CALOR_TARDE GEADA_NOITE FRIO NENHUM"
+        REAL prazo_horas "NULL"
+        REAL horas_em_estresse "NULL"
+        INTEGER status_antecipado "NOT NULL CHECK 0 ou 1"
+        TEXT versao_prognostico "NOT NULL, versao do pkl ou SEM_PROGNOSTICO"
+        TEXT criado_em "NOT NULL DEFAULT datetime now localtime"
+    }
+
+    historico_agregado_hora {
+        INTEGER id_cultura PK,FK "REFERENCES culturas"
+        TEXT hora PK "YYYY-MM-DD HH:00:00 local"
+        TEXT origem PK "origem das leituras agregadas"
+        INTEGER n "NOT NULL, leituras brutas agregadas"
+        REAL temperatura_min "tambem temperatura_med e temperatura_max"
+        REAL umidade_ar_min "tambem umidade_ar_med e umidade_ar_max"
+        REAL umidade_solo_min "tambem umidade_solo_med e umidade_solo_max"
+        INTEGER status_alerta_max "pior cor da hora"
+        INTEGER n_verde "contagem por cor"
+        INTEGER n_amarelo "contagem por cor"
+        INTEGER n_vermelho "contagem por cor"
+        INTEGER n_anomalias "leituras com flag_anomalia 1"
+    }
+
+    configuracao_sistema {
+        TEXT chave PK "chave textual, v2 29 semeadas + 4 da interface, v3 + 24 semear_configuracoes_v3"
+        TEXT valor "NOT NULL, texto serializado"
+        TEXT tipo "NOT NULL CHECK str int float bool"
+        TEXT descricao "NOT NULL"
+        TEXT atualizado_em "NOT NULL DEFAULT datetime now localtime"
+    }
+
+    sqlite_sequence {
+        TEXT name "tabela interna do SQLite criada pelo AUTOINCREMENT"
+        INTEGER seq "ultimo id gerado por tabela"
+    }
+    registro_acoes {
+        INTEGER id_acao PK "v3"
+        INTEGER id_leitura FK "NULL, ON DELETE SET NULL"
+        TEXT codigo_acao "NOT NULL, ACOES_VALIDAS"
+        TEXT causa "NOT NULL, CAUSAS_VALIDAS"
+        TEXT instante_utc "NOT NULL"
+        TEXT origem_aparelho "NOT NULL DEFAULT vazio; v4: desfazer ate 120 s, sem duplicata em 60 s"
+    }
+    eventos_interface {
+        INTEGER id_evento PK "v3, retencao de 90 dias"
+        TEXT tipo "NOT NULL CHECK ouviu tocou_pictograma feito ajuda sem_voz rede_caida chamou_tecnico"
+        TEXT instante_utc "NOT NULL, indice idx_eventos_interface_instante"
+        TEXT detalhe "NOT NULL DEFAULT vazio"
+        INTEGER demonstracao "v4, NOT NULL DEFAULT 0, 1 = gravado na demonstracao, fora do resumo"
+    }
+    pedido_ajuda {
+        INTEGER id_pedido PK "v3"
+        TEXT instante_utc "NOT NULL, indice idx_pedido_ajuda_instante"
+        INTEGER status "NULL ou CHECK 0 1 2, cor no momento do pedido"
+        TEXT causa "NOT NULL DEFAULT vazio"
+        REAL temperatura_ar "NULL"
+        REAL umidade_solo "NULL"
+        INTEGER id_leitura FK "NULL, ON DELETE SET NULL"
+        INTEGER demonstracao "v4, NOT NULL DEFAULT 0, 1 = pedido feito na demonstracao"
+    }
+    calibracao_sonda {
+        INTEGER id_calibracao PK "v3, no maximo uma ativa por no"
+        TEXT id_no "NOT NULL DEFAULT principal"
+        REAL adc_seco "NOT NULL, ADC do ponto seco"
+        REAL adc_umido "NOT NULL, ADC do ponto umido"
+        REAL alvo_seco_pct "NOT NULL"
+        REAL alvo_umido_pct "NOT NULL"
+        TEXT metodo "CHECK FABRICA DOIS_PONTOS UM_PONTO_CAMPO"
+        TEXT registrada_em "NOT NULL, ISO UTC"
+        INTEGER ativa "NOT NULL DEFAULT 1 CHECK 0 ou 1, indice idx_calibracao_sonda_no_ativa"
+        TEXT observacao "NOT NULL DEFAULT vazio"
+    }
